@@ -2,7 +2,7 @@
 
 ![CI](https://github.com/XGT1337-code/agentsoc/actions/workflows/ci.yml/badge.svg)
 ![python](https://img.shields.io/badge/python-3.11%2B-blue)
-![tests](https://img.shields.io/badge/tests-59%20passing-success)
+![tests](https://img.shields.io/badge/tests-67%20passing-success)
 
 AgentSOC стоит **между ИИ-агентом и его MCP-серверами** как прокси. Он видит
 каждое JSON-RPC сообщение, ловит атаки (tool poisoning, prompt injection, rug
@@ -65,7 +65,7 @@ uvicorn api.main:app --reload
 pytest
 ```
 
-Весь набор (**59 тестов**) проходит **без ключа API** (4 live-теста пропускаются
+Весь набор (**67 тестов**) проходит **без ключа API** (4 live-теста пропускаются
 без ключа). В CI (GitHub Actions) гоняется офлайн на Python 3.11 и 3.12.
 
 ### Make / Docker
@@ -96,6 +96,52 @@ docker run --rm -p 8000:8000 agentsoc
 set ANTHROPIC_API_KEY=...        # Linux/Mac: export ANTHROPIC_API_KEY=...
 python -m agent.agent "What's the weather in Baku?" --protected --servers weather,mail
 ```
+
+## Доступ к консоли: SSH → email → OTP
+
+Веб-консоль **нельзя открыть просто по URL/порту**. Доступ гейтится в три шага:
+
+1. **SSH-шлюз.** Подключаешься по SSH к шлюзу — он проверяет пароль и выдаёт
+   **одноразовый веб-токен** и печатает ссылку:
+   ```bash
+   python -m gateway.ssh_gateway          # поднять шлюз (порт 2222)
+   ssh soc@<ip> -p 2222                    # пароль из config (по умолч. "agentsoc")
+   ```
+   Без валидного токена веб-приложение отдаёт экран «Access is gated».
+2. **Email админа.** Открываешь напечатанную ссылку `/?gate=<token>` → страница
+   логина. Вводишь **email администратора** — принимается **только один адрес**
+   (`auth.admin_email` в config, по умолчанию мой). Любой другой → отказ.
+3. **OTP.** На этот адрес отправляется 6-значный код. По умолчанию он пишется в
+   `data/otp.txt` и в терминал шлюза (ничего не уходит с машины). Вводишь код →
+   создаётся сессия (cookie) → открывается консоль. Неверный код/просрочка →
+   отказ, 5 попыток максимум.
+
+Реальная доставка в почту — опционально, если **ты сам** пропишешь SMTP в env
+(креды читаются только из окружения, в код/логи не попадают):
+```bash
+AGENTSOC_SMTP_HOST=smtp.gmail.com AGENTSOC_SMTP_USER=you@gmail.com \
+AGENTSOC_SMTP_PASSWORD=<app-password> AGENTSOC_SMTP_FROM=you@gmail.com
+```
+Отключить весь гейт (для разработки/тестов): `AGENTSOC_AUTH_DISABLED=1`.
+Эндпоинты: `/?gate=`, `POST /auth/request-otp`, `POST /auth/verify-otp`,
+`GET /logout`, `GET /whoami`.
+
+## Контент-firewall: защита любого локального ИИ
+
+AgentSOC защищает не только MCP-агента. Любой **недоверенный текст**, который
+локальный ИИ компании собирается прочитать — вставленный промпт, письмо,
+документ, вывод инструмента, загруженный файл — можно прогнать через тот же
+движок правил:
+
+- `POST /scan` — сканирует переданный текст;
+- `POST /upload` — сканирует содержимое файла;
+- на дашборде — панель **Content firewall** (вставь текст / загрузи файл).
+
+Возвращается вердикт (`allow` / `review` / `block`), найденные угрозы (prompt
+injection, утечка, секреты, секретные пути) и **очищенная** копия текста. Каждый
+скан логируется как алерт и попадает в SIEM. Это и есть «защита локального ИИ от
+prompt injection / prompt engineering» из ТЗ — тот же firewall, но для
+произвольного контента, а не только JSON-RPC MCP.
 
 ## Как устроена защита: правила
 
@@ -168,16 +214,19 @@ review. Без ключа используется эвристика по кл�
 ```
 servers/   safe_server.py (read_inbox/read_file/send_email), poisoned_server.py (poisoning + rug pull),
            shadow_server.py (tool shadowing)
-proxy/     firewall.py (движок решений), rules.py (9 правил), judge.py (LLM-судья), models.py
+proxy/     firewall.py (движок решений), rules.py (9 правил), judge.py (LLM-судья),
+           scan.py (контент-firewall для любого текста), models.py
 siem/      store.py (SQLite + метрики + QRadar offenses), leef.py (LEEF 2.0), collector.py (приём LEEF),
            generators.py (AQL + Shuffle + Palo Alto), soar.py (замкнутый SOAR), explain.py (az/en/ru),
            report.py (инцидент-отчёт)
+gateway/   ssh_gateway.py (SSH-шлюз, asyncssh), auth.py (gate/OTP/сессии), otp.py (доставка)
 agent/     agent.py (живой агент на Claude API: профили hardened / --naive)
 demo/      fixtures.py (6 сценариев), replay.py (проигрывание), run_demo.py, live_attack.py (живой этап 1)
 api/       main.py (FastAPI: /events /alerts /metrics /alerts/{id}/explain|rules|report /demo/* /reset /leef)
-dashboard/ index.html (тёмная тема, метрики, покрытие MITRE/OWASP, фильтры, live, Split demo)
-tests/     test_rules.py, test_rules_v2.py, test_replay.py, test_proxy.py,
-           test_generators_api.py, test_metrics_report.py, test_live.py
+dashboard/ index.html (консоль: метрики, MITRE/OWASP, offenses, SOAR, контент-firewall, Split demo),
+           locked.html (экран SSH-гейта), login.html (email + OTP)
+tests/     test_rules.py, test_rules_v2.py, test_replay.py, test_proxy.py, test_generators_api.py,
+           test_metrics_report.py, test_siem_soar.py, test_auth_scan.py, test_live.py
 sandbox/   фейковые файлы, inbox, outbox.jsonl
 .github/   workflows/ci.yml  ·  Dockerfile  ·  Makefile
 ```
