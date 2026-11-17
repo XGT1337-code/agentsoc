@@ -68,11 +68,17 @@ class Firewall:
         action_cfg = self.cfg["policy"].get("tool_poisoning_action", "quarantine")
         kept: list[dict] = []
         raised: list[Alert] = []
+        seen = self._seen_tool_servers()  # tool name -> first server that offered it
         for tool in tools:
             findings: list[Finding] = []
             f1 = rules.check_tool_poisoning(tool, self.cfg)
             if f1:
                 findings.append(f1)
+            name = tool.get("name", "")
+            f9 = rules.check_tool_shadowing(server, name, seen)
+            if f9:
+                findings.append(f9)
+            seen.setdefault(name, server)
             approval = self.store.get_approval(server, tool.get("name", ""))
             f4 = rules.check_rug_pull(
                 tool,
@@ -114,7 +120,9 @@ class Firewall:
                 rules.TAGS["R0_SOAR_BLOCKLIST"], f"Tool '{tool}' is on the SOAR blocklist."))
 
         for f in (rules.check_sensitive_file(tool, args, self.cfg),
-                  rules.check_exfiltration(tool, args, self.cfg)):
+                  rules.check_path_traversal(tool, args),
+                  rules.check_exfiltration(tool, args, self.cfg),
+                  rules.check_secret_payload(tool, args, self.cfg)):
             if f:
                 findings.append(f)
 
@@ -135,6 +143,14 @@ class Firewall:
             self._raise(f, ev, action)
         reason = "; ".join(f.reason for f in findings if f.blocking)
         return Decision(allow=not blocked, findings=findings, reason=reason)
+
+    def _seen_tool_servers(self) -> dict[str, str]:
+        """Map tool name -> first server that offered it in this session (for shadowing)."""
+        out: dict[str, str] = {}
+        for e in reversed(self.store.list_events(limit=500, session_id=self.session_id)):
+            if e["method"] == "tools/list" and e["tool"]:
+                out.setdefault(e["tool"], e["server"])
+        return out
 
     def _known_tools(self, server: str) -> list[dict]:
         tools = []

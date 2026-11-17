@@ -1,13 +1,21 @@
 # AgentSOC — SOC-монитор и firewall для ИИ-агентов (MCP)
 
+![CI](https://github.com/XGT1337-code/agentsoc/actions/workflows/ci.yml/badge.svg)
+![python](https://img.shields.io/badge/python-3.11%2B-blue)
+![tests](https://img.shields.io/badge/tests-49%20passing-success)
+
 AgentSOC стоит **между ИИ-агентом и его MCP-серверами** как прокси. Он видит
 каждое JSON-RPC сообщение, ловит атаки (tool poisoning, prompt injection, rug
-pull, утечку данных), блокирует их и превращает в SOC-алерт. Для каждого алерта
-AgentSOC генерирует готовое правило **QRadar AQL** и плейбук **Shuffle**, а
-события экспортирует в **LEEF 2.0** для QRadar.
+pull, path traversal, утечку данных, tool shadowing), блокирует их и превращает
+в SOC-алерт. Для каждого алерта AgentSOC генерирует готовое правило **QRadar
+AQL**, плейбук **Shuffle** и **инцидент-отчёт**, а события экспортирует в
+**LEEF 2.0** для QRadar.
 
 Идея простая: события ИИ-агентов должны попадать в тот SIEM и SOAR, которые у
 Blue Team уже есть, а не жить в отдельном «чёрном ящике».
+
+![Дашборд AgentSOC](docs/dashboard-overview.jpg)
+![Консоль алертов](docs/dashboard-console.jpg)
 
 ```
             ┌─────────────┐     tools/list, tools/call      ┌────────────────┐
@@ -57,7 +65,22 @@ uvicorn api.main:app --reload
 pytest
 ```
 
-Весь набор (30 тестов) проходит **без ключа API**.
+Весь набор (**49 тестов**) проходит **без ключа API** (4 live-теста пропускаются
+без ключа). В CI (GitHub Actions) гоняется офлайн на Python 3.11 и 3.12.
+
+### Make / Docker
+
+```bash
+make help        # список задач
+make test        # тесты
+make demo        # офлайн-демо атак
+make serve       # API + дашборд
+```
+
+```bash
+docker build -t agentsoc .
+docker run --rm -p 8000:8000 agentsoc
+```
 
 ## Режим без ключа
 
@@ -84,9 +107,26 @@ python -m agent.agent "What's the weather in Baku?" --protected --servers weathe
 | 4 | **Rug pull** | Описание инструмента при повторном `tools/list` отличается от одобренного (хранится хеш) | OWASP **LLM03** Supply Chain · ATLAS **AML.T0010** | блок / карантин |
 | 5 | **Prompt injection в данных** | Результат `read_inbox`/`read_file` содержит инструкции для ИИ | OWASP **LLM01** · ATLAS **AML.T0051.001** | редактирование / блок |
 | 6 | **Task mismatch** | Вызов инструмента не связан с задачей пользователя — решает LLM-судья | OWASP **LLM06** Excessive Agency | алерт / review |
+| 7 | **Path traversal** | Путь выходит за рабочую папку (`..`, абсолютный путь, UNC) | OWASP **LLM02** · ATLAS **AML.T0057** | блок вызова |
+| 8 | **Secret payload (DLP)** | Секрет (ключ/пароль) в аргументах исходящего инструмента — даже на внутренний адрес | OWASP **LLM02** · ATLAS **AML.T0024** | алерт |
+| 9 | **Tool shadowing** | Второй сервер выдаёт инструмент с тем же именем, что доверенный (подмена) | OWASP **LLM03** Supply Chain · ATLAS **AML.T0010** | блок / карантин |
 
 Правила уровня `high`/`critical` **блокируют** вызов и возвращают агенту понятную
-ошибку MCP. Всё пишется в SQLite (`events`, `alerts`).
+ошибку MCP. Всё пишется в SQLite (`events`, `alerts`). Дашборд показывает
+покрытие **MITRE ATLAS** и **OWASP LLM Top 10** в реальном времени (авто-обновление
+каждые 4 c), фильтры по риску и поиск, кнопку **Run all scenarios** и генерацию
+инцидент-отчёта на каждый алерт.
+
+### Сценарии атак (дашборд / `demo/run_demo.py`)
+
+| Сценарий | Что показывает |
+|----------|----------------|
+| `tool_poisoning` | Отравленное описание инструмента крадёт SSH-ключ |
+| `prompt_injection` | Инъекция через письмо во входящих |
+| `rug_pull` | Инструмент становится вредным после одобрения |
+| `path_traversal` | Побег из рабочей папки (`../../../../etc/passwd`) |
+| `tool_shadowing` | Сервер-импостор подменяет доверенный `read_file` |
+| `normal` | Честная сессия — 0 алертов (без ложных срабатываний) |
 
 ## LLM-судья
 
@@ -100,15 +140,19 @@ review. Без ключа используется эвристика по кл�
 ## Структура
 
 ```
-servers/   safe_server.py (read_inbox/read_file/send_email), poisoned_server.py (tool poisoning + rug pull)
-proxy/     firewall.py (движок решений), rules.py (правила), judge.py (LLM-судья), models.py
-siem/      store.py (SQLite), leef.py (LEEF 2.0 → QRadar), generators.py (AQL + Shuffle), explain.py (az/en/ru)
-agent/     agent.py (живой агент на Claude API, режим --protected)
-demo/      fixtures.py (сценарии атак), replay.py (проигрывание), run_demo.py
-api/       main.py (FastAPI)
-dashboard/ index.html (тёмная тема, Split demo)
-tests/     test_rules.py, test_replay.py, test_generators_api.py
+servers/   safe_server.py (read_inbox/read_file/send_email), poisoned_server.py (poisoning + rug pull),
+           shadow_server.py (tool shadowing)
+proxy/     firewall.py (движок решений), rules.py (9 правил), judge.py (LLM-судья), models.py
+siem/      store.py (SQLite + метрики), leef.py (LEEF 2.0 → QRadar), generators.py (AQL + Shuffle),
+           explain.py (az/en/ru), report.py (инцидент-отчёт в Markdown)
+agent/     agent.py (живой агент на Claude API: профили hardened / --naive)
+demo/      fixtures.py (6 сценариев), replay.py (проигрывание), run_demo.py, live_attack.py (живой этап 1)
+api/       main.py (FastAPI: /events /alerts /metrics /alerts/{id}/explain|rules|report /demo/* /reset /leef)
+dashboard/ index.html (тёмная тема, метрики, покрытие MITRE/OWASP, фильтры, live, Split demo)
+tests/     test_rules.py, test_rules_v2.py, test_replay.py, test_proxy.py,
+           test_generators_api.py, test_metrics_report.py, test_live.py
 sandbox/   фейковые файлы, inbox, outbox.jsonl
+.github/   workflows/ci.yml  ·  Dockerfile  ·  Makefile
 ```
 
 ## Безопасность демо

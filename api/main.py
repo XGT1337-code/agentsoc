@@ -26,7 +26,7 @@ from common.config import ROOT
 from demo.fixtures import SCENARIOS
 from demo.replay import run_protected, run_unprotected
 from siem import explain as explain_mod
-from siem import generators, leef
+from siem import generators, leef, report
 from siem.store import Store
 
 app = FastAPI(title="AgentSOC", version="1.0")
@@ -53,6 +53,13 @@ def stats():
     s = store.stats()
     s["llm"] = llm.has_key()
     return s
+
+
+@app.get("/metrics")
+def metrics():
+    m = store.metrics()
+    m["llm"] = llm.has_key()
+    return m
 
 
 @app.get("/events")
@@ -91,6 +98,15 @@ def alert_rules(alert_id: str, hours: int = 1):
     return generators.generate_rules(a, hours=hours)
 
 
+@app.post("/alerts/{alert_id}/report")
+def alert_report(alert_id: str):
+    a = store.get_alert(alert_id)
+    if not a:
+        raise HTTPException(404, "alert not found")
+    chain = store.list_events(limit=50, session_id=a.get("session_id"))
+    return report.build_report(a, chain=chain)
+
+
 class BlockRequest(BaseModel):
     server: str
     tool: str = "*"
@@ -112,6 +128,22 @@ def soar_unblock(req: BlockRequest):
 @app.get("/soar/blocklist")
 def soar_blocklist():
     return store.list_blocklist()
+
+
+@app.post("/demo/run_all")
+def demo_run_all():
+    """Run every scenario (protected) — one-click demo seed."""
+    out = {}
+    for name in SCENARIOS:
+        r = run_protected(name, store=store)
+        out[name] = {"alerts": len(r.alerts), "leaked": r.leaked}
+    return {"ran": out, "stats": store.stats()}
+
+
+@app.post("/reset")
+def reset():
+    store.reset(approvals=True)
+    return {"reset": True, "stats": store.stats()}
 
 
 @app.post("/demo/{scenario}")

@@ -112,7 +112,37 @@ class Store:
             bl = c.execute(
                 "SELECT COUNT(*) FROM alerts WHERE action IN ('blocked','redacted','quarantined')"
             ).fetchone()[0]
-        return {"events": ev, "alerts": al, "blocked": bl}
+            sessions = c.execute("SELECT COUNT(DISTINCT session_id) FROM events").fetchone()[0]
+        return {"events": ev, "alerts": al, "blocked": bl, "sessions": sessions}
+
+    def metrics(self) -> dict:
+        """Aggregates for the dashboard: counts by risk, rule, action, and framework."""
+        with self._conn() as c:
+            def group(col):
+                return {r[0] or "?": r[1] for r in
+                        c.execute(f"SELECT {col}, COUNT(*) FROM alerts GROUP BY {col} ORDER BY 2 DESC")}
+            by_risk = group("risk")
+            by_rule = {r[0]: {"title": r[1], "count": r[2], "tag": r[3]} for r in c.execute(
+                "SELECT rule_id, title, COUNT(*), MAX(tag) FROM alerts GROUP BY rule_id, title ORDER BY 3 DESC")}
+            by_action = group("action")
+            recent = [dict(r) for r in c.execute(
+                "SELECT id, ts, risk, rule_id, title, server, tool, action FROM alerts ORDER BY ts DESC LIMIT 12")]
+        # MITRE ATLAS technique coverage (parsed from the framework tags).
+        import re as _re
+        atlas = {}
+        owasp = {}
+        for rid, info in by_rule.items():
+            for m in _re.findall(r"AML\.T\d{4}(?:\.\d{3})?", info["tag"]):
+                atlas.setdefault(m, 0)
+                atlas[m] += info["count"]
+            for m in _re.findall(r"LLM\d{2}:\d{4}", info["tag"]):
+                owasp.setdefault(m, 0)
+                owasp[m] += info["count"]
+        return {
+            "by_risk": by_risk, "by_rule": by_rule, "by_action": by_action,
+            "mitre_atlas": atlas, "owasp_llm": owasp, "recent": recent,
+            "totals": self.stats(),
+        }
 
     # ------------------------------------------------------------ approvals (rug pull)
     def get_approval(self, server: str, tool: str) -> dict | None:

@@ -20,6 +20,9 @@ TAGS = {
     "R4_RUG_PULL": "OWASP LLM03:2025 Supply Chain | MITRE ATLAS AML.T0010 AI Supply Chain Compromise",
     "R5_DATA_INJECTION": "OWASP LLM01:2025 Prompt Injection | MITRE ATLAS AML.T0051.001 Indirect Prompt Injection",
     "R6_TASK_MISMATCH": "OWASP LLM06:2025 Excessive Agency",
+    "R7_PATH_TRAVERSAL": "OWASP LLM02:2025 Sensitive Information Disclosure | MITRE ATLAS AML.T0057 LLM Data Leakage",
+    "R8_SECRET_PAYLOAD": "OWASP LLM02:2025 Sensitive Information Disclosure | MITRE ATLAS AML.T0024 Exfiltration",
+    "R9_TOOL_SHADOWING": "OWASP LLM03:2025 Supply Chain | MITRE ATLAS AML.T0010 AI Supply Chain Compromise",
     "R0_SOAR_BLOCKLIST": "SOAR response action",
 }
 
@@ -30,6 +33,9 @@ TITLES = {
     "R4_RUG_PULL": "Tool description changed after approval (rug pull)",
     "R5_DATA_INJECTION": "Prompt injection inside tool data",
     "R6_TASK_MISMATCH": "Tool call does not match the user task",
+    "R7_PATH_TRAVERSAL": "Path traversal outside the workspace",
+    "R8_SECRET_PAYLOAD": "Secret material in an outbound tool argument",
+    "R9_TOOL_SHADOWING": "Tool name shadowed by another server",
     "R0_SOAR_BLOCKLIST": "Tool blocked by SOAR playbook",
 }
 
@@ -141,6 +147,74 @@ def check_exfiltration(tool_name: str, args: dict, cfg: dict) -> Finding | None:
         + ("; the message carries secret material" if carries_secret else ""),
         body,
     )
+
+
+# ---------------------------------------------------------------- rule 7
+_TRAVERSAL_RE = re.compile(r"(?:^|[/\\])\.\.(?:[/\\]|$)")
+
+
+def check_path_traversal(tool_name: str, args: dict) -> Finding | None:
+    """Rule 7: a path argument tries to escape the workspace (.. or absolute path)."""
+    for p in _path_args(args):
+        raw = p.strip().replace("\\", "/")
+        abs_unix = raw.startswith("/")
+        abs_win = bool(re.match(r"^[a-zA-Z]:", raw))
+        unc = raw.startswith("//")
+        traversal = bool(_TRAVERSAL_RE.search(p))
+        if traversal or abs_unix or abs_win or unc:
+            how = "parent-dir traversal (..)" if traversal else "absolute path"
+            return _finding(
+                "R7_PATH_TRAVERSAL",
+                "high",
+                f"Tool '{tool_name}' requested path '{p}' using {how}, escaping the workspace",
+                json.dumps(args, ensure_ascii=False),
+            )
+    return None
+
+
+# ---------------------------------------------------------------- rule 8
+_SECRET_RE = re.compile(r"PRIVATE KEY|FAKE-KEY|BEGIN OPENSSH|BEGIN RSA|password\s*[:=]|api[_-]?key\s*[:=]|secret\s*[:=]|AKIA[0-9A-Z]{16}", re.I)
+_OUTBOUND = ("send", "post", "upload", "publish", "write", "put", "http", "webhook", "notify", "export", "fetch")
+
+
+def check_secret_payload(tool_name: str, args: dict, cfg: dict) -> Finding | None:
+    """Rule 8 (DLP): secret material placed into an argument of an outbound tool.
+
+    Catches exfiltration even to an internal recipient (where rule 3 stays quiet).
+    Advisory (medium): alerts, does not block, to avoid over-blocking.
+    """
+    if not any(k in tool_name.lower() for k in _OUTBOUND):
+        return None
+    blob = json.dumps(args, ensure_ascii=False)
+    m = _SECRET_RE.search(blob)
+    if not m:
+        return None
+    return _finding(
+        "R8_SECRET_PAYLOAD",
+        "medium",
+        f"Tool '{tool_name}' carries secret-looking material in its arguments "
+        f"(matched: {m.group(0)[:30]}) — possible data leak",
+        blob,
+    )
+
+
+# ---------------------------------------------------------------- rule 9
+def check_tool_shadowing(server: str, tool_name: str, seen: dict[str, str]) -> Finding | None:
+    """Rule 9: another server already exposes a tool with this name (shadowing).
+
+    `seen` maps tool_name -> first server that offered it. A second server
+    offering the same name may be impersonating a trusted tool.
+    """
+    first = seen.get(tool_name)
+    if first and first != server:
+        return _finding(
+            "R9_TOOL_SHADOWING",
+            "high",
+            f"Tool '{tool_name}' is offered by both '{first}' and '{server}'; "
+            f"'{server}' may be shadowing a trusted tool",
+            f"first seen on '{first}', now also on '{server}'",
+        )
+    return None
 
 
 # ---------------------------------------------------------------- rule 4
