@@ -30,6 +30,8 @@ def isolated_env(request, tmp_path, monkeypatch):
     monkeypatch.setenv("AGENTSOC_SANDBOX", str(sb))
     monkeypatch.setenv("AGENTSOC_DB", str(tmp_path / "agentsoc.db"))
     monkeypatch.setenv("AGENTSOC_CONFIG", str(ROOT / "config.yaml"))
+    # Auth is off during tests unless a test opts in; auth-flow tests set it themselves.
+    monkeypatch.setenv("AGENTSOC_AUTH_DISABLED", "1")
     yield
 
 

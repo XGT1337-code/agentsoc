@@ -24,6 +24,20 @@ DEFAULTS: dict[str, Any] = {
     },
     "syslog": {"enabled": False, "host": "127.0.0.1", "port": 514},
     "api": {"base_url": "http://127.0.0.1:8000"},
+    "auth": {
+        "enabled": True,
+        # The ONLY address allowed to receive an OTP / log in as admin.
+        "admin_email": "hamza.gurbanov07@gmail.com",
+        "ssh_password": "agentsoc",      # password for the SSH gateway (demo)
+        "ssh_user": "soc",
+        "ssh_port": 2222,
+        "gate_ttl": 120,                 # seconds a SSH-minted web token is valid
+        "otp_ttl": 300,                  # seconds an OTP is valid
+        "session_ttl": 28800,            # 8h logged-in session
+        # SMTP is optional. If host/user/password are set (via env), the OTP is
+        # emailed for real; otherwise it is shown in the gateway terminal + a file.
+        "smtp": {"host": "", "port": 587, "user": "", "password": "", "from": ""},
+    },
 }
 
 
@@ -63,4 +77,21 @@ def load_config() -> dict[str, Any]:
     # Environment overrides that the tests and the demo use.
     if os.environ.get("AGENTSOC_POISONING_ACTION"):
         cfg["policy"]["tool_poisoning_action"] = os.environ["AGENTSOC_POISONING_ACTION"]
+    a = cfg.setdefault("auth", {})
+    if os.environ.get("AGENTSOC_AUTH_DISABLED") == "1":
+        a["enabled"] = False
+    for env, key in (("AGENTSOC_ADMIN_EMAIL", "admin_email"),
+                     ("AGENTSOC_SSH_PASSWORD", "ssh_password"),
+                     ("AGENTSOC_SSH_USER", "ssh_user")):
+        if os.environ.get(env):
+            a[key] = os.environ[env]
+    if os.environ.get("AGENTSOC_SSH_PORT"):
+        a["ssh_port"] = int(os.environ["AGENTSOC_SSH_PORT"])
+    smtp = a.setdefault("smtp", {})
+    for env, key in (("AGENTSOC_SMTP_HOST", "host"), ("AGENTSOC_SMTP_USER", "user"),
+                     ("AGENTSOC_SMTP_PASSWORD", "password"), ("AGENTSOC_SMTP_FROM", "from")):
+        if os.environ.get(env):
+            smtp[key] = os.environ[env]
+    if os.environ.get("AGENTSOC_SMTP_PORT"):
+        smtp["port"] = int(os.environ["AGENTSOC_SMTP_PORT"])
     return cfg

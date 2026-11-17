@@ -16,36 +16,129 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, File, HTTPException, Query, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, PlainTextResponse
+from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, RedirectResponse
 from pydantic import BaseModel
 
 from common import llm
-from common.config import ROOT
+from common.config import ROOT, load_config
 from demo.fixtures import SCENARIOS
 from demo.replay import run_protected, run_unprotected
+from gateway import auth, otp
+from proxy.scan import scan_text
 from siem import explain as explain_mod
 from siem import collector, generators, leef, report, soar
 from siem.store import Store
 
-app = FastAPI(title="AgentSOC", version="1.0")
+app = FastAPI(title="AgentSOC", version="1.1")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 store = Store()
 DASHBOARD = ROOT / "dashboard" / "index.html"
+LOGIN = ROOT / "dashboard" / "login.html"
+LOCKED = ROOT / "dashboard" / "locked.html"
+
+SESSION_COOKIE = "agentsoc_session"
+GATEPASS_COOKIE = "agentsoc_gate"
+
+# Paths reachable without a logged-in session (the auth flow itself + machine feeds).
+_PUBLIC = ("/", "/health", "/auth/request-otp", "/auth/verify-otp", "/logout",
+           "/edl/domains", "/docs", "/openapi.json", "/favicon.ico")
+
+
+@app.middleware("http")
+async def _auth_guard(request: Request, call_next):
+    """Everything but the auth flow needs a valid logged-in session when auth is on."""
+    if not auth.auth_enabled():
+        return await call_next(request)
+    path = request.url.path
+    if path in _PUBLIC or path.startswith("/auth/"):
+        return await call_next(request)
+    sid = request.cookies.get(SESSION_COOKIE)
+    if auth.session_email(sid):
+        return await call_next(request)
+    from fastapi.responses import JSONResponse
+    return JSONResponse({"error": "unauthenticated", "hint": "log in via the SSH gateway + OTP"},
+                        status_code=401)
 
 
 @app.get("/")
-def index():
-    if DASHBOARD.exists():
+def index(request: Request, gate: str | None = None):
+    # Auth off (tests/dev): straight to the dashboard.
+    if not auth.auth_enabled():
+        return FileResponse(DASHBOARD) if DASHBOARD.exists() else {"service": "AgentSOC"}
+    # Already logged in.
+    if auth.session_email(request.cookies.get(SESSION_COOKIE)):
         return FileResponse(DASHBOARD)
-    return {"service": "AgentSOC", "llm": "on" if llm.has_key() else "template-mode"}
+    # Arriving with a one-time SSH gate token -> set the gatepass cookie AND serve
+    # the login page in the same response (no redirect, so no lost-cookie edge cases).
+    if gate and auth.consume_gate(gate):
+        html = LOGIN.read_text(encoding="utf-8") if LOGIN.exists() else "<h1>login</h1>"
+        resp = HTMLResponse(html)
+        resp.set_cookie(GATEPASS_COOKIE, auth.new_gatepass(), httponly=True, samesite="lax")
+        return resp
+    # Passed the SSH gate earlier -> email + OTP login page.
+    if auth.gatepass_valid(request.cookies.get(GATEPASS_COOKIE)):
+        return FileResponse(LOGIN) if LOGIN.exists() else HTMLResponse("<h1>login</h1>")
+    # No SSH gate -> locked.
+    return FileResponse(LOCKED) if LOCKED.exists() else HTMLResponse(
+        "<h1>AgentSOC locked</h1><p>Connect through the SSH gateway first.</p>", status_code=403)
 
 
 @app.get("/health")
 def health():
-    return {"ok": True, "llm": llm.has_key(), "scenarios": list(SCENARIOS)}
+    return {"ok": True, "llm": llm.has_key(), "scenarios": list(SCENARIOS),
+            "auth": auth.auth_enabled()}
+
+
+# ---------------------------------------------------------------- auth flow
+class OtpRequest(BaseModel):
+    email: str
+
+
+class OtpVerify(BaseModel):
+    email: str
+    code: str
+
+
+@app.post("/auth/request-otp")
+def auth_request_otp(req: OtpRequest, request: Request):
+    if auth.auth_enabled() and not auth.gatepass_valid(request.cookies.get(GATEPASS_COOKIE)):
+        raise HTTPException(403, "come through the SSH gateway first")
+    code = auth.request_otp(req.email)
+    if code is None:
+        # Do not reveal which email is the admin; generic response.
+        raise HTTPException(400, "that address is not authorized")
+    delivery = otp.deliver(code)
+    # Never return the code itself in the API response.
+    return {"sent": True, "channel": delivery["channel"], "detail": delivery["detail"]}
+
+
+@app.post("/auth/verify-otp")
+def auth_verify_otp(req: OtpVerify, request: Request):
+    if auth.auth_enabled() and not auth.gatepass_valid(request.cookies.get(GATEPASS_COOKIE)):
+        raise HTTPException(403, "come through the SSH gateway first")
+    sid = auth.verify_otp(req.email, req.code)
+    if not sid:
+        raise HTTPException(401, "invalid or expired code")
+    resp = Response()
+    resp.set_cookie(SESSION_COOKIE, sid, httponly=True, samesite="lax")
+    resp.delete_cookie(GATEPASS_COOKIE)
+    return resp
+
+
+@app.get("/logout")
+def logout(request: Request):
+    auth.logout(request.cookies.get(SESSION_COOKIE))
+    resp = RedirectResponse("/", status_code=303)
+    resp.delete_cookie(SESSION_COOKIE)
+    return resp
+
+
+@app.get("/whoami")
+def whoami(request: Request):
+    return {"email": auth.session_email(request.cookies.get(SESSION_COOKIE)) or None}
 
 
 @app.get("/stats")
@@ -204,6 +297,52 @@ def demo_split(scenario: str):
         "unprotected": _replay_json(unprot),
         "protected": _replay_json(prot),
     }
+
+
+class ScanRequest(BaseModel):
+    text: str
+    source: str = "pasted content"
+
+
+@app.post("/scan")
+def scan(req: ScanRequest):
+    """Content firewall: scan arbitrary untrusted text (prompt, email, doc) for
+    prompt injection / exfiltration / secrets — protects any local AI, not just MCP."""
+    result = scan_text(req.text, source=req.source)
+    _record_scan(result)
+    return result
+
+
+@app.post("/upload")
+async def upload(file: UploadFile = File(...)):
+    """Upload a file; AgentSOC scans its text content before any AI reads it."""
+    raw = await file.read()
+    if len(raw) > 2_000_000:
+        raise HTTPException(413, "file too large (max 2 MB for the demo)")
+    text = raw.decode("utf-8", "replace")
+    result = scan_text(text, source=f"file:{file.filename}")
+    result["filename"] = file.filename
+    result["bytes"] = len(raw)
+    _record_scan(result)
+    return result
+
+
+def _record_scan(result: dict) -> None:
+    """Log a content scan as events/alerts so it shows on the dashboard + SIEM."""
+    from proxy.models import Alert, Event, new_id
+    sid = "scan-" + new_id()
+    ev = Event(server="content-firewall", method="content/scan", direction="server->agent",
+               session_id=sid, tool=result.get("source"), risk=result.get("risk", "info"),
+               action="blocked" if result["verdict"] == "block" else
+                      ("redacted" if result["findings"] else "allowed"))
+    store.add_event(ev)
+    for f in result.get("findings", []):
+        store.add_alert(Alert(
+            rule_id=f["rule_id"], title=f["title"], risk=f["risk"], tag=f["tag"],
+            reason=f["reason"], evidence=f.get("evidence", ""), server="content-firewall",
+            tool=result.get("source"),
+            action="blocked" if result["verdict"] == "block" else "redacted",
+            event_id=ev.id, session_id=sid, task="content scan"))
 
 
 @app.get("/scenarios")

@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AgentSOC — sign in</title>
+<style>
+  :root{--paper:#fdfef9;--slate:#464847;--ink:#060201;--accent:#4e6180;--border:rgba(70,72,71,.16);--err:#9e5c52;--ok:#5f7d6a}
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;display:grid;place-items:center;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);
+       background:radial-gradient(1000px 520px at 50% -10%,rgba(162,177,200,.35),transparent 60%),var(--paper)}
+  .card{width:min(460px,92vw);background:#fff;border:1px solid var(--border);border-radius:20px;padding:32px 30px;
+        box-shadow:0 1px 2px rgba(6,2,1,.05),0 18px 50px rgba(6,2,1,.08)}
+  .brand{display:inline-flex;align-items:center;gap:9px;font-weight:700;margin-bottom:18px}
+  .brand .m{width:26px;height:26px;border-radius:7px;background:var(--slate);color:var(--paper);display:grid;place-items:center;font-family:Georgia,serif;font-weight:800}
+  .brand .s{color:var(--accent)}
+  h1{font-family:Georgia,serif;font-weight:600;font-size:23px;margin:0 0 6px}
+  p.sub{color:#6c6b66;margin:0 0 20px;font-size:14px;line-height:1.5}
+  label{display:block;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#989590;margin:0 0 7px}
+  input{width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:11px;font-size:15px;background:#fbfcf6;color:var(--ink)}
+  input:focus{outline:none;border-color:var(--accent)}
+  button{width:100%;margin-top:16px;padding:12px;border:none;border-radius:11px;background:var(--slate);color:var(--paper);font-size:14px;font-weight:600;cursor:pointer}
+  button:hover{background:var(--ink)}
+  .msg{margin-top:14px;font-size:13px;min-height:18px}
+  .msg.err{color:var(--err)} .msg.ok{color:var(--ok)}
+  .step{display:none} .step.on{display:block}
+  .otp{letter-spacing:7px;text-align:center;font-size:22px;font-family:ui-monospace,Consolas,monospace}
+  .hint{margin-top:16px;font-size:12px;color:#989590;line-height:1.5}
+  .back{background:none;color:var(--accent);font-weight:600;width:auto;padding:6px 0;margin-top:10px}
+</style></head>
+<body>
+  <div class="card">
+    <div class="brand"><span class="m">A</span>Agent<span class="s">SOC</span></div>
+
+    <div class="step on" id="stepEmail">
+      <h1>Admin sign in</h1>
+      <p class="sub">SSH gate passed. Enter the admin email to receive a one-time code.</p>
+      <label>Admin email</label>
+      <input id="email" type="email" placeholder="admin@example.com" autocomplete="off" />
+      <button onclick="requestOtp()">Send one-time code</button>
+      <div class="msg" id="m1"></div>
+      <div class="hint">The code is sent only to the authorized admin address. In local mode it is also written to <code>data/otp.txt</code> and shown in the SSH gateway terminal.</div>
+    </div>
+
+    <div class="step" id="stepOtp">
+      <h1>Enter the code</h1>
+      <p class="sub" id="otpSub">Check the admin inbox and enter the 6-digit code.</p>
+      <label>One-time code</label>
+      <input id="code" class="otp" inputmode="numeric" maxlength="6" placeholder="••••••" />
+      <button onclick="verifyOtp()">Verify &amp; enter</button>
+      <button class="back" onclick="toEmail()">← use a different email</button>
+      <div class="msg" id="m2"></div>
+    </div>
+  </div>
+<script>
+const $=id=>document.getElementById(id);
+async function jpost(u,b){const r=await fetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});return {ok:r.ok,data:await r.json().catch(()=>({}))};}
+function toEmail(){$("stepOtp").classList.remove("on");$("stepEmail").classList.add("on");$("m2").textContent="";}
+async function requestOtp(){
+  const email=$("email").value.trim(); const m=$("m1"); m.className="msg";
+  if(!email){m.className="msg err";m.textContent="Enter the admin email.";return;}
+  m.textContent="Sending…";
+  const {ok,data}=await jpost("/auth/request-otp",{email});
+  if(!ok){m.className="msg err";m.textContent=data.detail||"That address is not authorized.";return;}
+  $("otpSub").textContent=data.detail||"Enter the 6-digit code.";
+  $("stepEmail").classList.remove("on");$("stepOtp").classList.add("on");$("code").focus();
+}
+async function verifyOtp(){
+  const email=$("email").value.trim(), code=$("code").value.trim(); const m=$("m2"); m.className="msg";
+  if(code.length<6){m.className="msg err";m.textContent="Enter the 6-digit code.";return;}
+  m.textContent="Verifying…";
+  const {ok,data}=await jpost("/auth/verify-otp",{email,code});
+  if(!ok){m.className="msg err";m.textContent=data.detail||"Invalid or expired code.";return;}
+  m.className="msg ok";m.textContent="Access granted. Opening console…";
+  setTimeout(()=>location.href="/",500);
+}
+$("code")&&$("code").addEventListener("keydown",e=>{if(e.key==="Enter")verifyOtp();});
+$("email")&&$("email").addEventListener("keydown",e=>{if(e.key==="Enter")requestOtp();});
+</script>
+</body></html>
