@@ -104,6 +104,29 @@ def test_full_gate_email_otp_flow(authed):
     assert c.get("/whoami").json()["email"] == "admin@test.local"
 
 
+def test_gate_entry_always_forces_otp_even_with_live_session(authed):
+    """Re-entering through an SSH gate link must re-prompt OTP, never ride a
+    leftover session straight into the dashboard."""
+    from fastapi.testclient import TestClient
+    import api.main as main
+    importlib.reload(main)
+    c = TestClient(main.app)
+
+    # Log in fully (client keeps the session cookie).
+    token = authed.mint_gate()
+    c.get(f"/?gate={token}", follow_redirects=False)
+    code = authed.request_otp("admin@test.local")
+    c.post("/auth/verify-otp", json={"email": "admin@test.local", "code": code})
+    assert c.get("/alerts").status_code == 200  # session is live
+
+    # Now arrive through a NEW gate link -> must show the login page, not dashboard.
+    token2 = authed.mint_gate()
+    r = c.get(f"/?gate={token2}", follow_redirects=False)
+    assert "Admin sign in" in r.text
+    # the old session was invalidated server-side, so the API is locked until re-OTP
+    assert c.get("/alerts").status_code == 401
+
+
 def test_wrong_otp_rejected(authed):
     from fastapi.testclient import TestClient
     import api.main as main

@@ -27,13 +27,13 @@ DEFAULTS: dict[str, Any] = {
     "auth": {
         "enabled": True,
         # The ONLY address allowed to receive an OTP / log in as admin.
-        "admin_email": "hamza.gurbanov07@gmail.com",
+        "admin_email": "admin@example.com",   # override with AGENTSOC_ADMIN_EMAIL
         "ssh_password": "agentsoc",      # password for the SSH gateway (demo)
         "ssh_user": "soc",
         "ssh_port": 2222,
         "gate_ttl": 120,                 # seconds a SSH-minted web token is valid
         "otp_ttl": 300,                  # seconds an OTP is valid
-        "session_ttl": 28800,            # 8h logged-in session
+        "session_ttl": 900,              # 15min logged-in session (re-OTP after it)
         # SMTP is optional. If host/user/password are set (via env), the OTP is
         # emailed for real; otherwise it is shown in the gateway terminal + a file.
         "smtp": {"host": "", "port": 587, "user": "", "password": "", "from": ""},
@@ -87,6 +87,13 @@ def load_config() -> dict[str, Any]:
             a[key] = os.environ[env]
     if os.environ.get("AGENTSOC_SSH_PORT"):
         a["ssh_port"] = int(os.environ["AGENTSOC_SSH_PORT"])
+    if os.environ.get("AGENTSOC_SESSION_TTL"):
+        a["session_ttl"] = int(os.environ["AGENTSOC_SESSION_TTL"])
+    if os.environ.get("AGENTSOC_SSH_HOST"):
+        a["ssh_host"] = os.environ["AGENTSOC_SSH_HOST"]
+    # Public base URL the SSH gateway prints so a remote browser can open it.
+    if os.environ.get("AGENTSOC_BASE_URL"):
+        cfg.setdefault("api", {})["base_url"] = os.environ["AGENTSOC_BASE_URL"]
     smtp = a.setdefault("smtp", {})
     for env, key in (("AGENTSOC_SMTP_HOST", "host"), ("AGENTSOC_SMTP_USER", "user"),
                      ("AGENTSOC_SMTP_PASSWORD", "password"), ("AGENTSOC_SMTP_FROM", "from")):

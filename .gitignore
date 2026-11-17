@@ -5,3 +5,4 @@ data/
 sandbox/outbox.jsonl
 .pytest_cache/
 scratch/
+backups/

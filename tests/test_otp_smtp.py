@@ -36,12 +36,12 @@ class _FakeSMTP:
 
 @pytest.fixture
 def smtp_env(monkeypatch):
-    monkeypatch.setenv("AGENTSOC_ADMIN_EMAIL", "hamza.gurbanov07@gmail.com")
+    monkeypatch.setenv("AGENTSOC_ADMIN_EMAIL", "admin@example.com")
     monkeypatch.setenv("AGENTSOC_SMTP_HOST", "smtp.gmail.com")
     monkeypatch.setenv("AGENTSOC_SMTP_PORT", "587")
-    monkeypatch.setenv("AGENTSOC_SMTP_USER", "hamza.gurbanov07@gmail.com")
+    monkeypatch.setenv("AGENTSOC_SMTP_USER", "admin@example.com")
     monkeypatch.setenv("AGENTSOC_SMTP_PASSWORD", "app-password-1234")
-    monkeypatch.setenv("AGENTSOC_SMTP_FROM", "hamza.gurbanov07@gmail.com")
+    monkeypatch.setenv("AGENTSOC_SMTP_FROM", "admin@example.com")
     import common.config as cfg
     importlib.reload(cfg)
     import gateway.otp as otp
@@ -53,7 +53,7 @@ def test_smtp_config_is_read(smtp_env):
     from common.config import load_config
     smtp = load_config()["auth"]["smtp"]
     assert smtp["host"] == "smtp.gmail.com" and smtp["port"] == 587
-    assert smtp["user"] == "hamza.gurbanov07@gmail.com"
+    assert smtp["user"] == "admin@example.com"
 
 
 def test_deliver_sends_real_email(smtp_env, monkeypatch):
@@ -61,12 +61,12 @@ def test_deliver_sends_real_email(smtp_env, monkeypatch):
     monkeypatch.setattr(smtplib, "SMTP", _FakeSMTP)
     out = smtp_env.deliver("424242")
     assert out["channel"] == "email"
-    assert out["to"] == "hamza.gurbanov07@gmail.com"
+    assert out["to"] == "admin@example.com"
     c = _FakeSMTP.calls
     assert c["host"] == "smtp.gmail.com" and c["port"] == 587
     assert c["starttls"] is True
-    assert c["login"] == ("hamza.gurbanov07@gmail.com", "app-password-1234")
-    assert "hamza.gurbanov07@gmail.com" in c["sendmail"]["to"]
+    assert c["login"] == ("admin@example.com", "app-password-1234")
+    assert "admin@example.com" in c["sendmail"]["to"]
     assert "424242" in c["sendmail"]["body"]
 
 

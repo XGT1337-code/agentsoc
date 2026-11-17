@@ -32,6 +32,12 @@ CREATE TABLE IF NOT EXISTS blocklist (
     server TEXT, tool TEXT, reason TEXT, created_at TEXT,
     PRIMARY KEY (server, tool)
 );
+CREATE TABLE IF NOT EXISTS presence (
+    ip TEXT, channel TEXT, email TEXT, user_agent TEXT,
+    hostname TEXT, mac TEXT, first_seen TEXT, last_seen TEXT,
+    last_epoch REAL, hits INTEGER,
+    PRIMARY KEY (ip, channel)
+);
 CREATE INDEX IF NOT EXISTS idx_events_session ON events(session_id);
 """
 
@@ -228,6 +234,46 @@ class Store:
     def list_blocklist(self) -> list[dict]:
         with self._conn() as c:
             return [dict(r) for r in c.execute("SELECT * FROM blocklist ORDER BY created_at DESC")]
+
+    # ------------------------------------------------------------ presence (who is connected)
+    def touch_presence(self, ip: str, channel: str, email: str | None = None,
+                       user_agent: str | None = None) -> None:
+        """Record that a client (ip, channel) is active right now."""
+        import time
+        if not ip:
+            return
+        now, epoch = now_iso(), time.time()
+        with self._conn() as c:
+            row = c.execute("SELECT first_seen, hits, email, user_agent FROM presence "
+                            "WHERE ip=? AND channel=?", (ip, channel)).fetchone()
+            if row:
+                c.execute(
+                    "UPDATE presence SET last_seen=?, last_epoch=?, hits=hits+1, "
+                    "email=COALESCE(?, email), user_agent=COALESCE(?, user_agent) "
+                    "WHERE ip=? AND channel=?",
+                    (now, epoch, email, user_agent, ip, channel))
+            else:
+                c.execute(
+                    "INSERT INTO presence (ip, channel, email, user_agent, hostname, mac, "
+                    "first_seen, last_seen, last_epoch, hits) VALUES (?,?,?,?,?,?,?,?,?,1)",
+                    (ip, channel, email, user_agent, None, None, now, now, epoch))
+
+    def presence_raw(self, window_secs: int = 600) -> list[dict]:
+        """Clients seen within the window, most recent first."""
+        import time
+        cutoff = time.time() - window_secs
+        with self._conn() as c:
+            return [dict(r) for r in c.execute(
+                "SELECT * FROM presence WHERE last_epoch>=? ORDER BY last_epoch DESC", (cutoff,))]
+
+    def set_presence_meta(self, ip: str, channel: str, hostname: str | None, mac: str | None) -> None:
+        with self._conn() as c:
+            c.execute("UPDATE presence SET hostname=?, mac=? WHERE ip=? AND channel=?",
+                      (hostname, mac, ip, channel))
+
+    def clear_presence(self) -> None:
+        with self._conn() as c:
+            c.execute("DELETE FROM presence")
 
     # ------------------------------------------------------------ maintenance
     def reset(self, approvals: bool = True) -> None:

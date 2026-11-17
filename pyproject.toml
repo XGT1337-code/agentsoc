@@ -22,7 +22,7 @@ dependencies = [
 dev = ["pytest>=8"]
 
 [tool.setuptools]
-packages = ["common", "servers", "agent", "proxy", "siem", "api", "demo", "gateway"]
+packages = ["common", "servers", "agent", "proxy", "siem", "api", "demo", "gateway", "analyzer", "tools"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

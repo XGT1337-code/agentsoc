@@ -28,7 +28,8 @@ from demo.replay import run_protected, run_unprotected
 from gateway import auth, otp
 from proxy.scan import scan_text
 from siem import explain as explain_mod
-from siem import collector, generators, leef, report, soar
+from analyzer import analyze as log_analyze
+from siem import collector, generators, leef, presence as presence_mod, report, soar
 from siem.store import Store
 
 app = FastAPI(title="AgentSOC", version="1.1")
@@ -50,6 +51,13 @@ _PUBLIC = ("/", "/health", "/auth/request-otp", "/auth/verify-otp", "/logout",
 @app.middleware("http")
 async def _auth_guard(request: Request, call_next):
     """Everything but the auth flow needs a valid logged-in session when auth is on."""
+    # Record presence for every caller (who is on the service right now).
+    try:
+        ip = request.client.host if request.client else ""
+        who = auth.session_email(request.cookies.get(SESSION_COOKIE))
+        store.touch_presence(ip, "web", who, request.headers.get("user-agent"))
+    except Exception:
+        pass
     if not auth.auth_enabled():
         return await call_next(request)
     path = request.url.path
@@ -68,16 +76,19 @@ def index(request: Request, gate: str | None = None):
     # Auth off (tests/dev): straight to the dashboard.
     if not auth.auth_enabled():
         return FileResponse(DASHBOARD) if DASHBOARD.exists() else {"service": "AgentSOC"}
-    # Already logged in.
-    if auth.session_email(request.cookies.get(SESSION_COOKIE)):
-        return FileResponse(DASHBOARD)
-    # Arriving with a one-time SSH gate token -> set the gatepass cookie AND serve
-    # the login page in the same response (no redirect, so no lost-cookie edge cases).
+    # Arriving with a one-time SSH gate token ALWAYS starts a fresh login: any old
+    # session is discarded so coming in through SSH always demands the OTP again.
+    # (Checked before the session cookie, so a stale session can never skip OTP.)
     if gate and auth.consume_gate(gate):
+        auth.logout(request.cookies.get(SESSION_COOKIE))  # kill any previous session
         html = LOGIN.read_text(encoding="utf-8") if LOGIN.exists() else "<h1>login</h1>"
         resp = HTMLResponse(html)
+        resp.delete_cookie(SESSION_COOKIE)
         resp.set_cookie(GATEPASS_COOKIE, auth.new_gatepass(), httponly=True, samesite="lax")
         return resp
+    # Already logged in (direct revisit without a gate link, within the session TTL).
+    if auth.session_email(request.cookies.get(SESSION_COOKIE)):
+        return FileResponse(DASHBOARD)
     # Passed the SSH gate earlier -> email + OTP login page.
     if auth.gatepass_valid(request.cookies.get(GATEPASS_COOKIE)):
         return FileResponse(LOGIN) if LOGIN.exists() else HTMLResponse("<h1>login</h1>")
@@ -90,6 +101,13 @@ def index(request: Request, gate: str | None = None):
 def health():
     return {"ok": True, "llm": llm.has_key(), "scenarios": list(SCENARIOS),
             "auth": auth.auth_enabled()}
+
+
+@app.get("/presence")
+def presence(window: int = 600):
+    """Clients connected to AgentSOC right now: IP, hostname, MAC, device, who."""
+    clients = presence_mod.list_connected(store, window_secs=window)
+    return {"window_secs": window, "count": len(clients), "clients": clients}
 
 
 # ---------------------------------------------------------------- auth flow
@@ -325,6 +343,63 @@ async def upload(file: UploadFile = File(...)):
     result["bytes"] = len(raw)
     _record_scan(result)
     return result
+
+
+class LogAnalyzeRequest(BaseModel):
+    text: str
+    source: str | None = None
+
+
+@app.post("/logs/analyze")
+def logs_analyze(req: LogAnalyzeRequest):
+    """Drop real SIEM/EDR logs (Windows/Sysmon/Palo Alto/CEF/LEEF/Linux). AgentSOC
+    names every event, correlates attack patterns and returns a verdict."""
+    result = log_analyze.analyze_text(req.text, source=req.source)
+    _record_analysis(result, req.source or "pasted-log")
+    return result
+
+
+@app.post("/logs/upload")
+async def logs_upload(file: UploadFile = File(...)):
+    """Upload a real log file for analysis (not just a content scan)."""
+    raw = await file.read()
+    if len(raw) > 5_000_000:
+        raise HTTPException(413, "file too large (max 5 MB)")
+    text = raw.decode("utf-8", "replace")
+    result = log_analyze.analyze_text(text, source=f"file:{file.filename}")
+    result["filename"] = file.filename
+    result["bytes"] = len(raw)
+    _record_analysis(result, f"file:{file.filename}")
+    return result
+
+
+@app.get("/logs/knowledge")
+def logs_knowledge():
+    """The event knowledge base AgentSOC recognizes (for the 'what can it name' view)."""
+    from analyzer import knowledge
+    items = []
+    for eid, s in {**knowledge.WINDOWS}.items():
+        items.append({"source": "windows", "event_id": eid, **s})
+    for eid, s in knowledge.SYSMON.items():
+        items.append({"source": "sysmon", "event_id": eid, **s})
+    return {"count": len(items), "signatures": items}
+
+
+def _record_analysis(result: dict, source: str) -> None:
+    """Persist log-analysis findings as events/alerts so they feed the dashboard + SIEM."""
+    from proxy.models import Alert, Event, new_id
+    sid = "logscan-" + new_id()
+    verdict = result.get("verdict", "clean")
+    ev = Event(server="log-analyzer", method="logs/analyze", direction="server->agent",
+               session_id=sid, tool=source, risk=result.get("max_severity", "info"),
+               action="detected" if verdict != "clean" else "allowed")
+    store.add_event(ev)
+    for f in result.get("findings", []):
+        store.add_alert(Alert(
+            rule_id=f["id"], title=f["title"], risk=f["severity"],
+            tag=f.get("mitre", ""), reason=f.get("detail", ""),
+            evidence=str(f.get("evidence", "")), server="log-analyzer", tool=source,
+            action="detected", event_id=ev.id, session_id=sid, task="log analysis"))
 
 
 def _record_scan(result: dict) -> None:

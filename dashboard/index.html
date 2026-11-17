@@ -4,6 +4,9 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>AgentSOC</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
     /* Pinterest muted palette */
@@ -21,7 +24,7 @@
   *{box-sizing:border-box}
   html,body{margin:0}
   body{
-    font-family:"Segoe UI",system-ui,-apple-system,sans-serif;color:var(--text);font-size:14px;
+    font-family:"Space Grotesk","Segoe UI",system-ui,-apple-system,sans-serif;color:var(--text);font-size:14px;font-weight:500;
     background:
       radial-gradient(1200px 560px at 50% -8%, rgba(162,177,200,.35), transparent 60%),
       radial-gradient(760px 480px at 88% 4%, rgba(152,149,144,.18), transparent 55%),
@@ -32,7 +35,7 @@
   .announce{background:var(--slate);color:var(--paper);text-align:center;padding:9px 14px;font-size:12.5px;letter-spacing:.3px}
   nav{display:flex;align-items:center;gap:22px;padding:18px 30px;max-width:1320px;margin:0 auto}
   .brand{display:flex;align-items:center;gap:11px;font-size:20px;font-weight:700;letter-spacing:.2px}
-  .brand .mark{width:30px;height:30px;border-radius:9px;background:var(--slate);display:grid;place-items:center;color:var(--paper);font-weight:800;font-family:Georgia,serif}
+  .brand .mark{width:30px;height:30px;border-radius:9px;background:var(--slate);display:grid;place-items:center;color:var(--paper);font-weight:700;font-family:"Space Grotesk",sans-serif}
   .brand .soc{color:var(--accent)}
   nav .spacer{flex:1}
   .btn{border:1px solid var(--border2);background:var(--card);color:var(--text);border-radius:10px;padding:9px 15px;cursor:pointer;font-size:13px;font-weight:600;transition:.15s}
@@ -44,13 +47,13 @@
 
   .hero{text-align:center;margin:26px auto 0;max-width:900px}
   .chip{display:inline-flex;gap:8px;align-items:center;border:1px solid var(--border2);border-radius:999px;padding:6px 16px;color:var(--muted);font-size:12.5px;background:var(--card)}
-  h1.title{font-family:Georgia,"Times New Roman",serif;font-size:clamp(36px,6.5vw,68px);line-height:1.04;font-weight:600;margin:18px 0 0;letter-spacing:-.5px;color:var(--ink)}
+  h1.title{font-family:"Space Grotesk",sans-serif;font-size:clamp(36px,6.5vw,68px);line-height:1.04;font-weight:600;margin:18px 0 0;letter-spacing:-1px;color:var(--ink)}
   h1.title .g{font-style:italic;color:var(--accent)}
   .lead{color:var(--muted);font-size:clamp(14px,2vw,17px);margin:16px auto 0;max-width:580px;line-height:1.5}
 
   .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:28px 0 0}
   .metric{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px 20px;box-shadow:var(--shadow)}
-  .metric .n{font-family:Georgia,serif;font-size:34px;font-weight:600;color:var(--ink);line-height:1}
+  .metric .n{font-family:"Space Grotesk",sans-serif;font-size:34px;font-weight:600;color:var(--ink);line-height:1}
   .metric .l{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:1.4px;margin-top:8px}
   .metric .sub{font-size:12px;color:var(--muted);margin-top:8px}
 
@@ -153,6 +156,11 @@
     <div id="offenses"><div class="muted">Run a scenario to correlate alerts into offenses.</div></div>
   </div>
 
+  <div class="card" style="margin-top:14px">
+    <h3>Connected now — who is on the service <span class="muted" id="presCount"></span></h3>
+    <div id="presence"><div class="muted">No active clients.</div></div>
+  </div>
+
   <div class="scen">
     <button class="btn grad" onclick="runScenario('tool_poisoning')">Tool poisoning</button>
     <button class="btn grad" onclick="runScenario('prompt_injection')">Prompt injection</button>
@@ -187,6 +195,21 @@
     </div>
   </div>
 
+  <div class="card" style="margin-top:14px">
+    <h3>Log analyzer — drop real SIEM / EDR logs (QRadar · Splunk · Palo Alto · Windows)</h3>
+    <div style="display:grid;grid-template-columns:1fr 360px;gap:14px" class="cf-grid">
+      <div>
+        <textarea id="logText" placeholder="Paste REAL logs — e.g. Windows Event IDs (4624 success / 4625 failed / 1102 log cleared), Sysmon, Palo Alto CSV, CEF/LEEF, or Linux auth (Failed password / Accepted password)…" style="width:100%;min-height:120px;background:var(--card2);border:1px solid var(--border2);border-radius:10px;padding:12px;font-size:13px;color:var(--text);font-family:ui-monospace,Consolas,monospace;resize:vertical"></textarea>
+        <div class="row" style="margin-top:10px">
+          <button class="btn grad sm" onclick="analyzeLogs()">Analyze logs</button>
+          <label class="btn sm" style="cursor:pointer">Upload log file<input id="logFile" type="file" style="display:none" onchange="uploadLog()"></label>
+          <span class="muted">Names each event ID and correlates attacks.</span>
+        </div>
+      </div>
+      <div id="logOut"><div class="muted">Verdict, recognized events and findings appear here.</div></div>
+    </div>
+  </div>
+
   <section class="console">
     <div class="grid">
       <div class="pane">
@@ -215,8 +238,9 @@ async function jget(u){ const r = await fetch(API+u); return r.json(); }
 async function jpost(u){ const r = await fetch(API+u,{method:"POST"}); return r.json(); }
 
 async function refresh(){
-  const [m, al, h, offs] = await Promise.all([jget("/metrics"), jget("/alerts?limit=300"), jget("/health"), jget("/offenses")]);
+  const [m, al, h, offs, pres] = await Promise.all([jget("/metrics"), jget("/alerts?limit=300"), jget("/health"), jget("/offenses"), jget("/presence").catch(()=>({clients:[]}))]);
   renderOffenses(offs);
+  renderPresence(pres);
   document.getElementById("mEvents").textContent = m.totals.events;
   document.getElementById("mSessions").textContent = (m.totals.sessions||0)+" sessions";
   document.getElementById("mAlerts").textContent = m.totals.alerts;
@@ -243,6 +267,60 @@ function renderOffenses(offs){
       <div class="num">${o.alert_count} <span class="muted" style="font-weight:400">(${o.blocked} blk)</span></div>
       <div class="num" style="font-size:11px">${o.rules.length}</div>
     </div>`).join("");
+}
+function fmtTime(s){ if(!s) return "—"; try{ return new Date(s).toLocaleTimeString(); }catch(e){ return s; } }
+function renderPresence(p){
+  const box = document.getElementById("presence");
+  const cnt = document.getElementById("presCount");
+  const cl = (p && p.clients) || [];
+  cnt.textContent = cl.length ? "· "+cl.length+" online" : "";
+  if(!cl.length){ box.innerHTML='<div class="muted">No active clients.</div>'; return; }
+  box.innerHTML = `<div class="bar" style="grid-template-columns:120px 1fr 150px 1fr 150px 90px;color:var(--faint);margin-bottom:8px">
+      <div>IP</div><div>HOST / DEVICE</div><div>MAC</div><div>WHO</div><div>CHANNEL</div><div>LAST SEEN</div></div>` +
+    cl.map(c=>`
+    <div class="bar" style="grid-template-columns:120px 1fr 150px 1fr 150px 90px;align-items:center;margin-bottom:7px">
+      <div class="name" style="font-family:ui-monospace,Consolas,monospace">${esc(c.ip)}</div>
+      <div class="name" title="${esc(c.user_agent||'')}">${esc(c.hostname)} <span class="muted">· ${esc(c.device)}</span></div>
+      <div class="name" style="font-family:ui-monospace,Consolas,monospace;font-size:11px">${esc(c.mac)}</div>
+      <div class="name">${c.email?('<span class="pill blocked">'+esc(c.email)+'</span>'):'<span class="muted">anonymous</span>'}</div>
+      <div><span class="pill ${c.channel==='ssh'?'quarantined':'allow'}">${esc(c.channel)}</span></div>
+      <div class="num" style="font-size:11px">${fmtTime(c.last_seen)}</div>
+    </div>`).join("");
+}
+async function analyzeLogs(){
+  const t=document.getElementById("logText").value;
+  if(!t.trim())return;
+  const out=document.getElementById("logOut"); out.innerHTML='<div class="muted">Analyzing…</div>';
+  try{ const r=await jpost2("/logs/analyze",{text:t}); renderLogAnalysis(r); refresh(); }
+  catch(e){ out.innerHTML='<div class="muted">Error analyzing logs.</div>'; }
+}
+async function uploadLog(){
+  const f=document.getElementById("logFile").files[0]; if(!f)return;
+  const out=document.getElementById("logOut"); out.innerHTML='<div class="muted">Analyzing '+esc(f.name)+'…</div>';
+  const fd=new FormData(); fd.append("file",f);
+  const res=await fetch(API+"/logs/upload",{method:"POST",body:fd});
+  renderLogAnalysis(await res.json()); refresh();
+}
+function renderLogAnalysis(r){
+  const box=document.getElementById("logOut");
+  if(!r||!r.summary){ box.innerHTML='<div class="muted">No result.</div>'; return; }
+  let html=`<div style="margin-bottom:8px"><span class="risk ${r.max_severity}">${esc(r.verdict.toUpperCase())}</span>
+    <span class="muted">· ${r.summary.recognized}/${r.summary.total_records} recognized · ${(r.summary.by_outcome&&r.summary.by_outcome.failure)||0} failures</span></div>`;
+  if(r.findings&&r.findings.length){
+    html+='<div style="margin-bottom:8px">'+r.findings.map(f=>`
+      <div class="bar" style="grid-template-columns:70px 1fr;align-items:center;margin-bottom:5px">
+        <div><span class="risk ${f.severity}">${esc(f.severity)}</span></div>
+        <div class="name" title="${esc(f.detail)}">${esc(f.title)} <span class="muted">${esc(f.mitre||'')}</span></div>
+      </div>`).join('')+'</div>';
+  }
+  html+='<div style="max-height:220px;overflow:auto;border-top:1px solid var(--border2);padding-top:6px">'+
+    (r.events||[]).map(e=>`
+      <div class="bar" style="grid-template-columns:48px 1fr 40px;align-items:center;margin-bottom:4px">
+        <div class="muted" style="font-size:11px;font-family:ui-monospace,Consolas,monospace">${esc(e.event_id||'-')}</div>
+        <div class="name" title="${esc(e.desc||'')}">${esc(e.name)} <span class="muted">· ${esc(e.outcome)}</span></div>
+        <div class="num">${e.count}</div>
+      </div>`).join('')+'</div>';
+  box.innerHTML=html;
 }
 function renderBars(id, pairs){
   const box = document.getElementById(id);
