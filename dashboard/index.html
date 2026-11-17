@@ -6,127 +6,132 @@
 <title>AgentSOC</title>
 <style>
   :root{
-    --bg:#0a0607; --panel:#170f12; --panel2:#1e1317; --border:#2b1b20; --line:#3a2329;
-    --text:#f3e9ea; --muted:#b79aa0;
-    --accent:#ff6a3d; --accent2:#ff3d68; --accentgrad:linear-gradient(90deg,#ff6a3d,#ff3d68);
-    --ok:#39d98a;
-    --info:#ff8a4c; --low:#ffb27c; --medium:#f2c14e; --high:#ff7a4c; --critical:#ff466a;
+    /* Pinterest muted palette */
+    --paper:#fdfef9; --mist:#a2b1c8; --stone:#989590; --slate:#464847; --ink:#060201;
+    --card:#ffffff; --card2:#f7f8f2;
+    --border:rgba(70,72,71,.14); --border2:rgba(70,72,71,.22);
+    --text:#060201; --muted:#6c6b66; --faint:#989590;
+    --accent:#6f82a0;           /* deepened mist for legible accents */
+    --accentgrad:linear-gradient(90deg,#8d9db8,#5c6b86);
+    --ok:#5f7d6a;
+    /* desaturated severity scale that harmonises with the palette */
+    --info:#989590; --low:#8fa0b8; --medium:#9b9566; --high:#b2896a; --critical:#9e5c52;
+    --shadow:0 1px 2px rgba(6,2,1,.04), 0 8px 24px rgba(6,2,1,.05);
   }
   *{box-sizing:border-box}
   html,body{margin:0}
   body{
     font-family:"Segoe UI",system-ui,-apple-system,sans-serif;color:var(--text);font-size:14px;
     background:
-      radial-gradient(1100px 600px at 50% -5%, rgba(255,80,70,.22), transparent 60%),
-      radial-gradient(800px 500px at 85% 10%, rgba(255,61,104,.12), transparent 55%),
-      var(--bg);
+      radial-gradient(1200px 560px at 50% -8%, rgba(162,177,200,.35), transparent 60%),
+      radial-gradient(760px 480px at 88% 4%, rgba(152,149,144,.18), transparent 55%),
+      var(--paper);
     min-height:100vh;
   }
   a{color:var(--accent);text-decoration:none}
-  .announce{background:var(--accentgrad);text-align:center;padding:8px 14px;font-size:13px;font-weight:600;color:#1a0b06}
-  nav{display:flex;align-items:center;gap:22px;padding:14px 30px;max-width:1320px;margin:0 auto}
-  .brand{display:flex;align-items:center;gap:10px;font-size:20px;font-weight:800}
-  .brand .mark{width:30px;height:30px;border-radius:8px;background:var(--accentgrad);display:grid;place-items:center;color:#1a0b06;font-weight:900}
-  .brand .soc{background:var(--accentgrad);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .announce{background:var(--slate);color:var(--paper);text-align:center;padding:9px 14px;font-size:12.5px;letter-spacing:.3px}
+  nav{display:flex;align-items:center;gap:22px;padding:18px 30px;max-width:1320px;margin:0 auto}
+  .brand{display:flex;align-items:center;gap:11px;font-size:20px;font-weight:700;letter-spacing:.2px}
+  .brand .mark{width:30px;height:30px;border-radius:9px;background:var(--slate);display:grid;place-items:center;color:var(--paper);font-weight:800;font-family:Georgia,serif}
+  .brand .soc{color:var(--accent)}
   nav .spacer{flex:1}
-  .btn{border:1px solid var(--line);background:transparent;color:var(--text);border-radius:10px;padding:9px 15px;cursor:pointer;font-size:13px;font-weight:600;transition:.15s}
-  .btn:hover{border-color:var(--accent);color:#fff}
-  .btn.grad{background:var(--accentgrad);border:none;color:#1a0b06}
+  .btn{border:1px solid var(--border2);background:var(--card);color:var(--text);border-radius:10px;padding:9px 15px;cursor:pointer;font-size:13px;font-weight:600;transition:.15s}
+  .btn:hover{border-color:var(--accent);color:var(--slate)}
+  .btn.grad{background:var(--slate);border-color:var(--slate);color:var(--paper)}
+  .btn.grad:hover{background:var(--ink);color:var(--paper)}
   .btn.sm{padding:6px 11px;font-size:12px}
   .wrap{max-width:1320px;margin:0 auto;padding:0 24px}
 
   .hero{text-align:center;margin:26px auto 0;max-width:900px}
-  .chip{display:inline-flex;gap:8px;align-items:center;border:1px solid var(--line);border-radius:999px;padding:6px 16px;color:var(--muted);font-size:13px}
-  h1.title{font-size:clamp(34px,6vw,64px);line-height:1.03;font-weight:800;margin:16px 0 0;letter-spacing:-1px}
-  h1.title .g{background:var(--accentgrad);-webkit-background-clip:text;background-clip:text;color:transparent}
-  .lead{color:var(--muted);font-size:clamp(14px,2vw,17px);margin:14px auto 0;max-width:560px}
+  .chip{display:inline-flex;gap:8px;align-items:center;border:1px solid var(--border2);border-radius:999px;padding:6px 16px;color:var(--muted);font-size:12.5px;background:var(--card)}
+  h1.title{font-family:Georgia,"Times New Roman",serif;font-size:clamp(36px,6.5vw,68px);line-height:1.04;font-weight:600;margin:18px 0 0;letter-spacing:-.5px;color:var(--ink)}
+  h1.title .g{font-style:italic;color:var(--accent)}
+  .lead{color:var(--muted);font-size:clamp(14px,2vw,17px);margin:16px auto 0;max-width:580px;line-height:1.5}
 
-  .toolbar{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:22px auto 0}
-  .live{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:12px;border:1px solid var(--line);border-radius:999px;padding:6px 12px}
-  .dot{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 0 rgba(57,217,138,.6);animation:pulse 2s infinite}
-  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(57,217,138,.5)}70%{box-shadow:0 0 0 7px rgba(57,217,138,0)}100%{box-shadow:0 0 0 0 rgba(57,217,138,0)}}
-
-  .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:26px 0 0}
-  .metric{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:16px 18px}
-  .metric .n{font-size:30px;font-weight:800;background:var(--accentgrad);-webkit-background-clip:text;background-clip:text;color:transparent;line-height:1}
-  .metric .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:6px}
+  .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:28px 0 0}
+  .metric{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px 20px;box-shadow:var(--shadow)}
+  .metric .n{font-family:Georgia,serif;font-size:34px;font-weight:600;color:var(--ink);line-height:1}
+  .metric .l{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:1.4px;margin-top:8px}
   .metric .sub{font-size:12px;color:var(--muted);margin-top:8px}
 
   .panels{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
-  .card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:16px}
-  .card h3{margin:0 0 12px;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--muted)}
-  .bar{display:grid;grid-template-columns:150px 1fr 40px;gap:10px;align-items:center;margin-bottom:8px;font-size:12px}
-  .bar .track{height:10px;background:var(--panel2);border-radius:999px;overflow:hidden}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px;box-shadow:var(--shadow)}
+  .card h3{margin:0 0 14px;font-size:11px;text-transform:uppercase;letter-spacing:1.4px;color:var(--faint)}
+  .bar{display:grid;grid-template-columns:150px 1fr 40px;gap:10px;align-items:center;margin-bottom:9px;font-size:12px}
+  .bar .track{height:8px;background:var(--card2);border-radius:999px;overflow:hidden}
   .bar .fill{height:100%;background:var(--accentgrad);border-radius:999px}
   .bar .name{color:var(--muted);font-family:ui-monospace,Consolas,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .bar .num{text-align:right;font-weight:700}
+  .bar .num{text-align:right;font-weight:700;color:var(--slate)}
 
-  .scen{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:22px 0 0;align-items:center}
+  .scen{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:24px 0 0;align-items:center}
+  .live{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:12px;border:1px solid var(--border2);border-radius:999px;padding:6px 12px;background:var(--card)}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--ok);animation:pulse 2.2s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(95,125,106,.4)}70%{box-shadow:0 0 0 7px rgba(95,125,106,0)}100%{box-shadow:0 0 0 0 rgba(95,125,106,0)}}
 
-  .console{margin:26px 0 40px}
+  .console{margin:26px 0 48px}
   .grid{display:grid;grid-template-columns:420px 1fr;gap:16px;min-height:460px}
-  .pane{background:var(--panel);border:1px solid var(--border);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
+  .pane{background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;box-shadow:var(--shadow)}
   .pane .head{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border)}
-  .pane .head h2{font-size:12px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin:0}
+  .pane .head h2{font-size:11px;text-transform:uppercase;letter-spacing:1.4px;color:var(--faint);margin:0}
   .pane .head .spacer{flex:1}
   .pane .body{padding:14px;overflow:auto;flex:1}
-  input.search{background:var(--panel2);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:6px 10px;font-size:12px;width:130px}
-  select{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:12px}
+  input.search{background:var(--card2);border:1px solid var(--border2);border-radius:8px;color:var(--text);padding:6px 10px;font-size:12px;width:130px}
+  select{background:var(--card);color:var(--text);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:12px}
 
-  .alert{background:var(--panel2);border:1px solid var(--border);border-left-width:4px;border-radius:12px;padding:11px 13px;margin-bottom:10px;cursor:pointer;transition:.12s}
-  .alert:hover{border-color:var(--accent)}
-  .alert.sel{outline:1px solid var(--accent)}
+  .alert{background:var(--card2);border:1px solid var(--border);border-left-width:3px;border-radius:12px;padding:11px 13px;margin-bottom:10px;cursor:pointer;transition:.12s}
+  .alert:hover{border-color:var(--accent);box-shadow:var(--shadow)}
+  .alert.sel{outline:1.5px solid var(--accent)}
   .alert .top{display:flex;justify-content:space-between;gap:8px;align-items:center}
   .alert .title{font-weight:700}
   .alert .meta{color:var(--muted);font-size:12px;margin-top:5px}
-  .risk{font-size:10px;font-weight:800;padding:3px 9px;border-radius:999px;text-transform:uppercase;letter-spacing:.5px;color:#1a0b06}
+  .risk{font-size:10px;font-weight:800;padding:3px 9px;border-radius:999px;text-transform:uppercase;letter-spacing:.5px;color:var(--paper)}
   .risk.info{background:var(--info)}.risk.low{background:var(--low)}.risk.medium{background:var(--medium)}
-  .risk.high{background:var(--high)}.risk.critical{background:var(--critical);color:#fff}
-  .pill{display:inline-block;font-size:11px;padding:2px 9px;border-radius:999px;background:rgba(255,255,255,.04);border:1px solid var(--line);color:var(--muted)}
-  .pill.blocked{color:#ff9fae;border-color:#5a2230}.pill.quarantined{color:#ffd59e;border-color:#5a4322}
-  .pill.redacted{color:#ffe08a;border-color:#5a5222}
+  .risk.high{background:var(--high)}.risk.critical{background:var(--critical)}
+  .pill{display:inline-block;font-size:11px;padding:2px 9px;border-radius:999px;background:var(--card2);border:1px solid var(--border2);color:var(--muted)}
+  .pill.blocked{color:#8a4b42;border-color:#d8c3bf}.pill.quarantined{color:#8a6a3c;border-color:#dccdb3}
+  .pill.redacted{color:#857a3c;border-color:#d8d1ad}
 
-  .dcard{background:var(--panel2);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px}
-  .dcard h3{margin:0 0 12px;font-size:12px;text-transform:uppercase;letter-spacing:1px;background:var(--accentgrad);-webkit-background-clip:text;background-clip:text;color:transparent}
-  .kv{display:grid;grid-template-columns:120px 1fr;gap:7px 12px;font-size:13px}
-  .kv div.k{color:var(--muted)}
-  .tag{font-family:ui-monospace,Consolas,monospace;font-size:12px;color:#ffd0b8;background:#0a0607;padding:7px 9px;border-radius:8px;display:block;margin-top:4px;border:1px solid var(--border)}
-  pre{background:#070405;border:1px solid var(--border);border-radius:10px;padding:12px;overflow:auto;font-size:12px;color:#ffd9c7;margin:0;max-height:320px}
+  .dcard{background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px}
+  .dcard h3{margin:0 0 12px;font-size:11px;text-transform:uppercase;letter-spacing:1.2px;color:var(--accent)}
+  .kv{display:grid;grid-template-columns:120px 1fr;gap:8px 12px;font-size:13px}
+  .kv div.k{color:var(--faint)}
+  .tag{font-family:ui-monospace,Consolas,monospace;font-size:12px;color:var(--slate);background:var(--paper);padding:7px 9px;border-radius:8px;display:block;margin-top:4px;border:1px solid var(--border2)}
+  pre{background:var(--paper);border:1px solid var(--border2);border-radius:10px;padding:12px;overflow:auto;font-size:12px;color:var(--slate);margin:0;max-height:320px}
   .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
   .chain{list-style:none;padding:0;margin:0}
-  .chain li{display:flex;gap:10px;align-items:center;padding:7px 9px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;background:var(--panel);font-size:12px}
-  .chain .mono{font-family:ui-monospace,Consolas,monospace;color:#ffb48f}
+  .chain li{display:flex;gap:10px;align-items:center;padding:7px 9px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;background:var(--card);font-size:12px}
+  .chain .mono{font-family:ui-monospace,Consolas,monospace;color:var(--accent)}
   .muted{color:var(--muted)}
-  .empty{color:var(--muted);text-align:center;margin-top:46px}
+  .empty{color:var(--faint);text-align:center;margin-top:46px}
   .split{display:grid;grid-template-columns:1fr 1fr;gap:14px}
   .side{border:1px solid var(--border);border-radius:14px;padding:14px}
-  .side.bad{background:linear-gradient(180deg,#2a0d14,#160a0c)}
-  .side.good{background:linear-gradient(180deg,#0c2318,#0a1611)}
+  .side.bad{background:#f7edeb}
+  .side.good{background:#eaf1ec}
   .side h4{margin:0 0 10px;display:flex;gap:8px;align-items:center}
-  .step{font-family:ui-monospace,Consolas,monospace;font-size:12px;padding:5px 7px;border-radius:8px;margin-bottom:5px;background:rgba(0,0,0,.35)}
-  .step.leaked{background:#45121f;color:#ffb3bd}.step.blocked{background:#123022;color:#9fe6b6}
-  .step.quarantined,.step.redacted{background:#332a10;color:#ffe08a}
-  .badge-ok{background:var(--ok);color:#06240f;font-size:10px;font-weight:800;padding:3px 9px;border-radius:999px;text-transform:uppercase}
-  .flash{animation:flash .5s ease}@keyframes flash{from{filter:brightness(1.6)}to{filter:none}}
+  .step{font-family:ui-monospace,Consolas,monospace;font-size:12px;padding:5px 7px;border-radius:8px;margin-bottom:5px;background:rgba(6,2,1,.04)}
+  .step.leaked{background:#f0ddd9;color:#8a4b42}.step.blocked{background:#dfeadf;color:#3f5f4c}
+  .step.quarantined,.step.redacted{background:#efe7cf;color:#80703c}
+  .badge-ok{background:var(--ok);color:var(--paper);font-size:10px;font-weight:800;padding:3px 9px;border-radius:999px;text-transform:uppercase}
+  .flash{animation:flash .5s ease}@keyframes flash{from{background:#eef1f6}to{background:var(--card2)}}
   @media(max-width:980px){.grid{grid-template-columns:1fr}.panels{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,1fr)}.split{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
-<div class="announce">🛡 AgentSOC — real-time SOC monitor &amp; firewall for MCP AI agents</div>
+<div class="announce">AgentSOC — real-time SOC monitor &amp; firewall for MCP AI agents</div>
 
 <nav>
   <div class="brand"><span class="mark">A</span>Agent<span class="soc">SOC</span></div>
   <div class="spacer"></div>
   <div class="live"><span class="dot"></span><span id="liveTxt">live</span></div>
-  <button class="btn" onclick="runAll()">▶ Run all scenarios</button>
-  <button class="btn" onclick="resetAll()">⌫ Reset</button>
+  <button class="btn" onclick="runAll()">Run all scenarios</button>
+  <button class="btn" onclick="resetAll()">Reset</button>
 </nav>
 
 <div class="wrap">
   <section class="hero">
-    <div class="chip" id="llmChip">✦ loading…</div>
+    <div class="chip" id="llmChip">loading…</div>
     <h1 class="title">Stop agent attacks<br>with <span class="g">confidence.</span></h1>
-    <p class="lead">Nine detection rules watch every MCP message — tool poisoning, prompt injection, rug pulls, path traversal, exfiltration and shadowing — mapped to MITRE ATLAS &amp; OWASP LLM Top 10.</p>
+    <p class="lead">Nine detection rules watch every MCP message — tool poisoning, prompt injection, rug pulls, path traversal, exfiltration and shadowing — routed into QRadar, Shuffle and Palo Alto.</p>
   </section>
 
   <div class="metrics">
@@ -153,7 +158,7 @@
     <button class="btn grad" onclick="runScenario('path_traversal')">Path traversal</button>
     <button class="btn grad" onclick="runScenario('tool_shadowing')">Tool shadowing</button>
     <button class="btn" onclick="runScenario('normal')">Normal</button>
-    <span style="width:1px;height:26px;background:var(--line)"></span>
+    <span style="width:1px;height:26px;background:var(--border2)"></span>
     <select id="splitSel">
       <option value="tool_poisoning">Tool poisoning</option>
       <option value="prompt_injection">Prompt injection</option>
@@ -204,7 +209,7 @@ async function refresh(){
   document.getElementById("mRate").textContent = rate+"% of alerts acted on";
   document.getElementById("mCoverage").textContent = Object.keys(m.mitre_atlas||{}).length;
   document.getElementById("mOwasp").textContent = Object.keys(m.owasp_llm||{}).length+" OWASP categories";
-  document.getElementById("llmChip").textContent = "✦ LLM: "+(h.llm?"live model":"template mode (no key)");
+  document.getElementById("llmChip").textContent = "LLM: "+(h.llm?"live model":"template mode (no key)");
   renderBars("ruleBars", Object.entries(m.by_rule||{}).map(([k,v])=>[k+" · "+v.title, v.count]));
   renderBars("atlasBars", Object.entries(m.mitre_atlas||{}));
   alerts = al; renderAlerts();
@@ -212,10 +217,10 @@ async function refresh(){
 function renderOffenses(offs){
   const box = document.getElementById("offenses");
   if(!offs || !offs.length){ box.innerHTML='<div class="muted">No offenses yet.</div>'; return; }
-  box.innerHTML = `<div class="bar" style="grid-template-columns:52px 1fr 90px 90px;color:var(--muted);margin-bottom:6px">
+  box.innerHTML = `<div class="bar" style="grid-template-columns:52px 1fr 90px 90px;color:var(--faint);margin-bottom:8px">
       <div>MAG</div><div>OFFENSE</div><div>ALERTS</div><div>RULES</div></div>` +
     offs.slice(0,8).map(o=>`
-    <div class="bar" style="grid-template-columns:52px 1fr 90px 90px;align-items:center;margin-bottom:6px">
+    <div class="bar" style="grid-template-columns:52px 1fr 90px 90px;align-items:center;margin-bottom:7px">
       <div><span class="risk ${o.risk}" style="min-width:26px;display:inline-block;text-align:center">${o.magnitude}</span></div>
       <div class="name" title="${esc(o.description)}">${esc(o.name)} <span class="muted">· ${esc(o.servers.join(', '))}</span></div>
       <div class="num">${o.alert_count} <span class="muted" style="font-weight:400">(${o.blocked} blk)</span></div>
@@ -330,17 +335,17 @@ function renderSplit(r){
     <div class="split">
       <div class="side bad"><h4>Without protection ${u.leaked?'<span class="risk critical">leaked</span>':''}</h4>
         ${u.steps.map(sr).join("")}
-        <div style="margin-top:8px" class="muted">Exfiltration: <b style="color:#ff8a9a">${u.leaked?'YES — key sent to attacker':'no'}</b></div></div>
+        <div style="margin-top:8px" class="muted">Exfiltration: <b style="color:#9e5c52">${u.leaked?'YES — key sent to attacker':'no'}</b></div></div>
       <div class="side good"><h4>With AgentSOC ${!p.leaked?'<span class="badge-ok">protected</span>':''}</h4>
         ${p.steps.map(sr).join("")}
-        <div style="margin-top:8px" class="muted">Alerts: <b>${p.alerts.length}</b> · Exfiltration: <b style="color:#9fe6b6">${p.leaked?'NOT blocked':'blocked'}</b></div></div>
+        <div style="margin-top:8px" class="muted">Alerts: <b>${p.alerts.length}</b> · Exfiltration: <b style="color:#3f5f4c">${p.leaked?'NOT blocked':'blocked'}</b></div></div>
     </div>`;
 }
 function setBusy(b){ document.body.style.cursor=b?"progress":"default"; document.getElementById("liveTxt").textContent=b?"working…":"live"; }
 function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function copyText(enc){ try{navigator.clipboard.writeText(JSON.parse(enc));}catch(e){navigator.clipboard.writeText(enc);} }
 refresh();
-autotimer = setInterval(()=>{ if(document.visibilityState==="visible") refresh(); }, 4000); // live auto-refresh
+autotimer = setInterval(()=>{ if(document.visibilityState==="visible") refresh(); }, 4000);
 </script>
 </body>
 </html>
