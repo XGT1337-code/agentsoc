@@ -1,0 +1,38 @@
+# AgentSOC configuration. All values here are safe defaults for a local demo.
+
+email:
+  # Domains the agent may send email to. Anything else is "external exfiltration".
+  allowed_domains:
+    - corp.example
+    - company.example
+
+sensitive_paths:
+  # Substrings that mark a path as secret (case-insensitive).
+  - .ssh
+  - id_rsa
+  - id_ed25519
+  - .env
+  - credentials
+  - .aws
+  - secrets
+
+policy:
+  # What to do when a tool description is poisoned:
+  #   quarantine - remove the tool from tools/list and block calls to it (default)
+  #   alert      - only raise an alert, let the agent see the tool (other rules still block)
+  tool_poisoning_action: quarantine
+  # What to do with tool results that contain prompt injection:
+  #   redact - replace suspicious lines (default)
+  #   block  - replace the whole result with an error
+  injection_action: redact
+  # Ask the LLM judge about every tools/call that no rule blocked.
+  judge_enabled: true
+
+syslog:
+  # Send events to QRadar as LEEF 2.0 over UDP. Off by default.
+  enabled: false
+  host: 127.0.0.1
+  port: 514
+
+api:
+  base_url: http://127.0.0.1:8000

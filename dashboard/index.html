@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AgentSOC</title>
+<style>
+  :root{
+    --bg:#0b0f17; --panel:#121826; --panel2:#0e1320; --border:#1e2638;
+    --text:#e6edf6; --muted:#8aa0bd; --accent:#4da3ff; --accent2:#2b6cb0;
+    --ok:#2ecc71; --info:#4da3ff; --low:#7cc3ff; --medium:#f2c14e; --high:#ff8a4c; --critical:#ff5468;
+    --chip:#1b2436;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Segoe UI",system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);font-size:14px}
+  header{padding:14px 20px;background:linear-gradient(90deg,#0d1322,#111a2e);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  header h1{font-size:18px;margin:0;letter-spacing:.3px}
+  header h1 .soc{color:var(--accent)}
+  .sub{color:var(--muted);font-size:12px}
+  .spacer{flex:1}
+  .counters{display:flex;gap:10px}
+  .counter{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:8px 14px;text-align:center;min-width:86px}
+  .counter .n{font-size:20px;font-weight:700}
+  .counter .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  .toolbar{display:flex;gap:8px;padding:12px 20px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--border);background:var(--panel2)}
+  button{background:var(--chip);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;transition:.15s}
+  button:hover{border-color:var(--accent);color:#fff}
+  button.primary{background:var(--accent2);border-color:var(--accent)}
+  button.primary:hover{background:var(--accent)}
+  button.ghost{background:transparent}
+  .layout{display:grid;grid-template-columns:380px 1fr;gap:0;height:calc(100vh - 140px)}
+  .col{overflow:auto;padding:14px}
+  #alertList{border-right:1px solid var(--border)}
+  .alert{background:var(--panel);border:1px solid var(--border);border-left-width:4px;border-radius:10px;padding:10px 12px;margin-bottom:10px;cursor:pointer}
+  .alert:hover{border-color:var(--accent)}
+  .alert.sel{outline:1px solid var(--accent)}
+  .alert .top{display:flex;justify-content:space-between;gap:8px;align-items:center}
+  .alert .title{font-weight:600}
+  .alert .meta{color:var(--muted);font-size:12px;margin-top:4px}
+  .risk{font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.5px;color:#07101e}
+  .risk.info{background:var(--info)} .risk.low{background:var(--low)} .risk.medium{background:var(--medium)}
+  .risk.high{background:var(--high);color:#1a0b05} .risk.critical{background:var(--critical);color:#fff}
+  .pill{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;background:var(--chip);border:1px solid var(--border);color:var(--muted)}
+  .pill.blocked{color:#ffb3bd;border-color:#5a2230} .pill.quarantined{color:#ffd59e;border-color:#5a4322}
+  .pill.redacted{color:#ffe08a;border-color:#5a5222} .pill.alerted{color:#bcd}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px}
+  .card h3{margin:0 0 10px;font-size:14px;color:var(--accent)}
+  .kv{display:grid;grid-template-columns:120px 1fr;gap:6px 12px;font-size:13px}
+  .kv div.k{color:var(--muted)}
+  .tag{font-family:ui-monospace,Consolas,monospace;font-size:12px;color:#bcd;background:var(--panel2);padding:6px 8px;border-radius:6px;display:block;margin-top:4px}
+  pre{background:#070b12;border:1px solid var(--border);border-radius:8px;padding:12px;overflow:auto;font-size:12px;color:#cfe3ff;margin:0}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+  .chain{list-style:none;padding:0;margin:0}
+  .chain li{display:flex;gap:10px;align-items:center;padding:6px 8px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:var(--panel2);font-size:12px}
+  .chain .mono{font-family:ui-monospace,Consolas,monospace;color:#9fc6ff}
+  .muted{color:var(--muted)}
+  select{background:var(--chip);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:7px 10px}
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .split h4{margin:0 0 8px}
+  .side{border:1px solid var(--border);border-radius:12px;padding:12px}
+  .side.bad{background:linear-gradient(180deg,#1a0e12,#121826)}
+  .side.good{background:linear-gradient(180deg,#0e1a14,#121826)}
+  .step{font-family:ui-monospace,Consolas,monospace;font-size:12px;padding:4px 6px;border-radius:6px;margin-bottom:4px;background:var(--panel2)}
+  .step.leaked{background:#3a1420;color:#ffb3bd}
+  .step.blocked{background:#13261a;color:#9fe6b6}
+  .step.quarantined,.step.redacted{background:#2a2410;color:#ffe08a}
+  .copy{font-size:11px;padding:4px 8px}
+  .empty{color:var(--muted);text-align:center;margin-top:40px}
+  .flash{animation:flash .6s ease}
+  @keyframes flash{from{background:#1c3350}to{background:var(--panel)}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Agent<span class="soc">SOC</span></h1>
+  <span class="sub">SOC monitor &amp; firewall for MCP AI agents</span>
+  <span class="spacer"></span>
+  <div class="counters">
+    <div class="counter"><div class="n" id="cEvents">0</div><div class="l">Events</div></div>
+    <div class="counter"><div class="n" id="cAlerts">0</div><div class="l">Alerts</div></div>
+    <div class="counter"><div class="n" id="cBlocked">0</div><div class="l">Blocked</div></div>
+  </div>
+</header>
+
+<div class="toolbar">
+  <strong class="muted" style="margin-right:4px">Scenarios:</strong>
+  <button class="primary" onclick="runScenario('tool_poisoning')">Tool poisoning</button>
+  <button class="primary" onclick="runScenario('prompt_injection')">Prompt injection</button>
+  <button class="primary" onclick="runScenario('rug_pull')">Rug pull</button>
+  <button onclick="runScenario('normal')">Normal (baseline)</button>
+  <span class="spacer"></span>
+  <select id="splitSel">
+    <option value="tool_poisoning">Tool poisoning</option>
+    <option value="prompt_injection">Prompt injection</option>
+    <option value="rug_pull">Rug pull</option>
+    <option value="normal">Normal</option>
+  </select>
+  <button class="ghost" onclick="runSplit()">⇄ Split demo</button>
+  <button class="ghost" onclick="refresh()">↻ Refresh</button>
+</div>
+
+<div class="layout">
+  <div class="col" id="alertList"><div class="empty">No alerts yet — run a scenario above.</div></div>
+  <div class="col" id="detail"><div class="empty">Select an alert, or run a Split demo.</div></div>
+</div>
+
+<script>
+const API = location.origin.startsWith("http") ? "" : "http://127.0.0.1:8000";
+let alerts = [], selected = null;
+
+async function jget(u){ const r = await fetch(API+u); return r.json(); }
+async function jpost(u){ const r = await fetch(API+u,{method:"POST"}); return r.json(); }
+
+async function refresh(){
+  const [st, al] = await Promise.all([jget("/stats"), jget("/alerts?limit=200")]);
+  document.getElementById("cEvents").textContent = st.events;
+  document.getElementById("cAlerts").textContent = st.alerts;
+  document.getElementById("cBlocked").textContent = st.blocked;
+  alerts = al; renderAlerts();
+}
+
+function renderAlerts(){
+  const box = document.getElementById("alertList");
+  if(!alerts.length){ box.innerHTML = '<div class="empty">No alerts yet — run a scenario above.</div>'; return; }
+  box.innerHTML = alerts.map(a=>`
+    <div class="alert ${selected===a.id?'sel':''}" style="border-left-color:var(--${a.risk})" onclick="openAlert('${a.id}')">
+      <div class="top"><span class="title">${esc(a.title)}</span><span class="risk ${a.risk}">${a.risk}</span></div>
+      <div class="meta">${esc(a.server)}/${esc(a.tool||'-')} · <span class="pill ${a.action}">${a.action}</span> · ${a.rule_id}</div>
+    </div>`).join("");
+}
+
+async function openAlert(id){
+  selected = id; renderAlerts();
+  const a = await jget("/alerts/"+id);
+  const chain = (a.chain||[]).slice().reverse().map(e=>`
+    <li><span class="risk ${e.risk}">${e.risk}</span>
+        <span class="mono">${esc(e.method)}</span>
+        <span>${esc(e.tool||'')}</span>
+        <span class="pill ${e.action}">${e.action}</span></li>`).join("");
+  document.getElementById("detail").innerHTML = `
+    <div class="card flash">
+      <h3>${esc(a.title)}</h3>
+      <div class="kv">
+        <div class="k">Risk</div><div><span class="risk ${a.risk}">${a.risk}</span></div>
+        <div class="k">Rule</div><div>${a.rule_id}</div>
+        <div class="k">Server / Tool</div><div>${esc(a.server)} / ${esc(a.tool||'-')}</div>
+        <div class="k">Action taken</div><div><span class="pill ${a.action}">${a.action}</span></div>
+        <div class="k">Reason</div><div>${esc(a.reason)}</div>
+        <div class="k">Framework</div><div><span class="tag">${esc(a.tag)}</span></div>
+        <div class="k">User task</div><div class="muted">${esc(a.task||'—')}</div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Explain</h3>
+      <div class="row">
+        <select id="lang"><option value="az">Azərbaycan</option><option value="en" selected>English</option><option value="ru">Русский</option></select>
+        <button onclick="explain('${id}')">Explain this alert</button>
+      </div>
+      <div id="explainOut" class="muted">Choose a language and click Explain.</div>
+    </div>
+    <div class="card">
+      <h3>SIEM / SOAR output</h3>
+      <button class="primary" onclick="genRules('${id}')">Generate AQL + Shuffle</button>
+      <div id="rulesOut"></div>
+    </div>
+    <div class="card">
+      <h3>Event chain (session)</h3>
+      <ul class="chain">${chain||'<li class="muted">no events</li>'}</ul>
+    </div>`;
+}
+
+async function explain(id){
+  const lang = document.getElementById("lang").value;
+  const out = document.getElementById("explainOut");
+  out.textContent = "…";
+  const r = await jpost("/alerts/"+id+"/explain?lang="+lang);
+  out.innerHTML = `<div>${esc(r.text)}</div><div class="muted" style="margin-top:6px">source: ${r.source}</div>`;
+}
+
+async function genRules(id){
+  const out = document.getElementById("rulesOut");
+  out.textContent = "…";
+  const r = await jpost("/alerts/"+id+"/rules");
+  out.innerHTML = `
+    <div class="row" style="margin-top:12px"><strong>QRadar AQL</strong>
+      <button class="copy" onclick='copyText(${JSON.stringify(JSON.stringify(r.aql))})'>Copy</button>
+      <span class="muted">mode: ${r.mode}</span></div>
+    <pre>${esc(r.aql)}</pre>
+    <div class="row" style="margin-top:12px"><strong>Shuffle playbook (JSON)</strong>
+      <button class="copy" onclick='copyText(${JSON.stringify(JSON.stringify(JSON.stringify(r.shuffle,null,2)))})'>Copy</button></div>
+    <pre>${esc(JSON.stringify(r.shuffle,null,2))}</pre>`;
+}
+
+async function runScenario(name){
+  setBusy(true);
+  await jpost("/demo/"+name);
+  await refresh();
+  if(alerts.length) openAlert(alerts[0].id);
+  else document.getElementById("detail").innerHTML = '<div class="card"><h3>Normal baseline</h3><p class="muted">Honest session completed through AgentSOC with no alerts — no false positives.</p></div>';
+  setBusy(false);
+}
+
+async function runSplit(){
+  const name = document.getElementById("splitSel").value;
+  setBusy(true);
+  const r = await jpost("/demo/"+name+"/split");
+  renderSplit(r);
+  await refresh();
+  setBusy(false);
+}
+
+function renderSplit(r){
+  const stepRow = s => `<div class="step ${s.status}">${s.op.padEnd(5)} ${esc(s.server)} ${esc(s.tool||'')} ${s.status!=='ok'?'['+s.status+']':''}</div>`;
+  const u = r.unprotected, p = r.protected;
+  document.getElementById("detail").innerHTML = `
+    <div class="card">
+      <h3>${esc(r.info.title)}</h3>
+      <div class="muted">${esc(r.info.description)}</div>
+      <div style="margin-top:8px"><span class="pill">task: ${esc(r.info.task)}</span></div>
+    </div>
+    <div class="split">
+      <div class="side bad">
+        <h4>Without protection ${u.leaked?'<span class="risk critical">leaked</span>':''}</h4>
+        ${u.steps.map(stepRow).join("")}
+        <div style="margin-top:8px" class="muted">Exfiltration to attacker: <b style="color:#ff8a9a">${u.leaked?'YES — key sent to attacker@evil.example':'no'}</b></div>
+      </div>
+      <div class="side good">
+        <h4>With AgentSOC ${!p.leaked?'<span class="risk info" style="background:var(--ok);color:#06240f">protected</span>':''}</h4>
+        ${p.steps.map(stepRow).join("")}
+        <div style="margin-top:8px" class="muted">Alerts raised: <b>${p.alerts.length}</b> · Exfiltration: <b style="color:#9fe6b6">${p.leaked?'NOT blocked':'blocked'}</b></div>
+      </div>
+    </div>`;
+}
+
+function setBusy(b){ document.body.style.cursor = b?"progress":"default"; }
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function copyText(encoded){ try{ navigator.clipboard.writeText(JSON.parse(encoded)); }catch(e){ navigator.clipboard.writeText(encoded); } }
+
+refresh();
+</script>
+</body>
+</html>
