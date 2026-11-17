@@ -4,3 +4,4 @@ __pycache__/
 data/
 sandbox/outbox.jsonl
 .pytest_cache/
+scratch/
