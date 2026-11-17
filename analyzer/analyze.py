@@ -16,6 +16,36 @@ from analyzer.parse import parse
 _BRUTE_THRESHOLD = 5  # failed auths from one identity before it is "brute force"
 
 
+_FAIL_WORDS = {"failure", "failed", "fail", "deny", "denied", "drop", "dropped",
+               "blocked", "block", "error", "reject", "rejected", "invalid"}
+_OK_WORDS = {"success", "succeeded", "allowed", "allow", "accepted", "accept", "ok", "pass"}
+
+
+def _generic_sig(f: dict) -> dict:
+    """Classify a generic SIEM event from its action/status/event_type fields."""
+    act = (f.get("action") or "").lower()
+    st = (f.get("status") or "").lower()
+    et = (f.get("event_type") or "event").lower()
+    if act in _FAIL_WORDS or st in _FAIL_WORDS:
+        outcome = "failure"
+    elif act in _OK_WORDS or st in _OK_WORDS:
+        outcome = "success"
+    else:
+        outcome = "info"
+    sev = (f.get("severity") or "").lower()
+    severity = sev if sev in knowledge.SEVERITY_ORDER else ("low" if outcome == "failure" else "info")
+    if any(w in et for w in ("auth", "ssh", "login", "logon", "cred")):
+        category = "authentication"
+    elif any(w in et for w in ("web", "http", "traffic", "firewall", "net", "dns")):
+        category = "network"
+    else:
+        category = "unknown"
+    mitre = "T1110" if outcome == "failure" and category == "authentication" else ""
+    return {"name": f"{et} · {outcome}", "outcome": outcome, "severity": severity,
+            "category": category, "mitre": mitre, "source": "generic", "event_id": et,
+            "desc": "SIEM event classified by its action/status fields."}
+
+
 def _signature(rec: dict) -> dict:
     src, eid, f = rec.get("source"), rec.get("event_id"), rec.get("fields", {})
     if src == "linux-auth" and f.get("_linux_sig"):
@@ -26,6 +56,8 @@ def _signature(rec: dict) -> dict:
         sig = knowledge.lookup(src, eid)
         if sig:
             return sig
+    if src == "generic":
+        return _generic_sig(f)
     return {"name": "Unrecognized event", "outcome": "info", "severity": "info",
             "category": "unknown", "mitre": "", "source": src or "unknown",
             "event_id": eid, "desc": "No signature matched; review manually."}
@@ -105,29 +137,40 @@ def analyze_text(text: str, source: str | None = None) -> dict:
 def _correlate(enriched: list[dict]) -> list[dict]:
     findings: list[dict] = []
 
-    def ids_with(pred):
-        return [e for e in enriched if pred(e)]
-
-    is_fail = lambda e: e["sig"]["outcome"] == "failure"
-    is_success = lambda e: e["sig"]["outcome"] == "success"
-
-    # Brute force (and whether it then succeeded) per identity.
-    fails_by = defaultdict(int)
-    for e in ids_with(is_fail):
-        fails_by[_ident(e)] += 1
-    success_idents = {_ident(e) for e in ids_with(is_success)}
-    for ident, n in sorted(fails_by.items(), key=lambda kv: kv[1], reverse=True):
-        if ident == "?" or n < _BRUTE_THRESHOLD:
-            continue
-        if ident in success_idents:
+    # Brute force (and whether it then succeeded), grouped by BOTH user and
+    # source IP — real SIEM logs often show the attack on the IP, not the user.
+    fails_user, fails_ip = defaultdict(int), defaultdict(int)
+    succ_user, succ_ip = set(), set()
+    for e in enriched:
+        o = e["sig"]["outcome"]
+        u, ip = e.get("fields", {}).get("user"), e.get("fields", {}).get("ip")
+        if o == "failure":
+            if u:
+                fails_user[u] += 1
+            if ip:
+                fails_ip[ip] += 1
+        elif o == "success":
+            if u:
+                succ_user.add(u)
+            if ip:
+                succ_ip.add(ip)
+    # Prefer the source IP as the attacker identity; fall back to the username
+    # only when no IP crossed the threshold (avoids double-reporting one attack).
+    ip_hits = {ip: n for ip, n in fails_ip.items() if ip and n >= _BRUTE_THRESHOLD}
+    chosen = [("IP", ip, n, ip in succ_ip) for ip, n in ip_hits.items()]
+    if not ip_hits:
+        chosen = [("user", u, n, u in succ_user)
+                  for u, n in fails_user.items() if u and n >= _BRUTE_THRESHOLD]
+    for kind, ident, n, succeeded in sorted(chosen, key=lambda t: t[2], reverse=True):
+        if succeeded:
             findings.append({"id": "brute_force_success", "title": "Brute force likely SUCCEEDED",
                              "severity": "critical", "mitre": "T1110",
-                             "detail": f"{n} failed logons for '{ident}' followed by a success.",
+                             "detail": f"{n} failed auths from {kind} '{ident}', then a success.",
                              "evidence": ident})
         else:
             findings.append({"id": "brute_force", "title": "Brute force attempt",
                              "severity": "high", "mitre": "T1110",
-                             "detail": f"{n} failed authentications for '{ident}'.",
+                             "detail": f"{n} failed authentications from {kind} '{ident}'.",
                              "evidence": ident})
 
     def has_eid(*eids):

@@ -91,6 +91,27 @@ def test_clean_traffic_has_no_findings():
     assert r["findings"] == []
 
 
+def test_generic_siem_key_value_is_recognized():
+    """Splunk-style key=value lines (not Windows Event IDs) are classified, not 'unknown'."""
+    log = ("event_type=web_access src_ip=10.10.40.12 action=allowed severity=low\n"
+           "event_type=ssh_auth src_ip=10.10.40.15 user=dba_admin action=success status=accepted")
+    r = analyze_text(log)
+    assert r["summary"]["unknown"] == 0
+    names = {e["name"] for e in r["events"]}
+    assert "web_access · success" in names
+    assert "ssh_auth · success" in names
+
+
+def test_brute_force_detected_by_source_ip():
+    fails = "\n".join("event_type=ssh_auth src_ip=10.10.40.15 user=u%d action=failure status=failed" % i
+                      for i in range(6))
+    success = "\nevent_type=ssh_auth src_ip=10.10.40.15 user=admin action=success status=accepted"
+    r = analyze_text(fails + success)
+    assert r["verdict"] == "malicious"
+    assert any(f["id"] == "brute_force_success" and "10.10.40.15" in f["evidence"]
+               for f in r["findings"])
+
+
 def test_every_event_is_named():
     r = analyze_text(_win("4624") + "\n" + _win("4625") + "\n" + _win("1102"))
     assert r["summary"]["recognized"] == 3

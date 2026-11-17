@@ -1,24 +1,14 @@
-"""Thin wrapper around the Anthropic SDK.
+"""Thin wrapper around the LLM API SDK (model-agnostic).
 
-The API key is read only from the ANTHROPIC_API_KEY environment variable by
-the SDK itself. It is never stored, printed or logged here.
+The API key is read only from the ANTHROPIC_API_KEY environment variable by the
+SDK itself, and the model from AGENTSOC_MODEL. Neither is stored, printed or
+logged here. Without a key the project runs fully in template mode.
 """
 from __future__ import annotations
 
 import json
 import os
 from typing import Any
-
-DEFAULT_MODEL = "claude-sonnet-5-5"
-
-# Models that accept server-side refusal fallbacks (`fallbacks: "default"`).
-_FALLBACK_MODELS = {
-    "claude-sonnet-5-5",
-    "claude-opus-5-5",
-    "claude-opus-5",
-    "claude-fable-5-1",
-    "claude-fable-5-2",
-}
 
 _client = None
 
@@ -29,7 +19,8 @@ def has_key() -> bool:
 
 
 def model_name() -> str:
-    return os.environ.get("AGENTSOC_MODEL", "").strip() or DEFAULT_MODEL
+    """The model to use, taken from AGENTSOC_MODEL (empty in template mode)."""
+    return os.environ.get("AGENTSOC_MODEL", "").strip()
 
 
 def get_client():
@@ -42,16 +33,9 @@ def get_client():
 
 
 def create_message(**kwargs: Any):
-    """Call the Messages API with refusal fallbacks enabled when the model supports them."""
+    """Call the Messages API. Model comes from AGENTSOC_MODEL."""
     client = get_client()
     model = kwargs.pop("model", None) or model_name()
-    if model in _FALLBACK_MODELS:
-        return client.beta.messages.create(
-            model=model,
-            betas=["server-side-fallback-2026-07-01"],
-            fallbacks="default",
-            **kwargs,
-        )
     return client.messages.create(model=model, **kwargs)
 
 

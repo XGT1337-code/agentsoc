@@ -32,7 +32,7 @@ Instead each attack is a **recorded fixture**: a fixed list of MCP messages
 
 This still satisfies the real goal of stage 1 (show the leak with no defence,
 show it blocked with AgentSOC) and the split-demo in stage 4, without a
-general-purpose agent that executes untrusted instructions. The live Claude
+general-purpose agent that executes untrusted instructions. The live LLM
 agent (`agent/agent.py`) only runs in the *protected* direction and only does
 honest tasks; it never needs to obey a poisoned description.
 
@@ -64,7 +64,7 @@ uses.
 
 `demo/live_attack.py` (нужен ключ) гоняет наивного агента против отравленного
 сервера дважды: **direct** (может реально слить фейковый ключ в `outbox.jsonl`)
-и **protected** (AgentSOC блокирует). Современные модели Claude часто сами
+и **protected** (AgentSOC блокирует). Современные LLM часто сами
 сопротивляются инъекции — поэтому детерминированный показ утечки остаётся на
 фикстурах (D3), а AgentSOC блокирует вызов независимо от того, поддалась модель
 или нет (defense in depth). Живые проверки — в `tests/test_live.py`, они

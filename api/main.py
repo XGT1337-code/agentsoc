@@ -27,6 +27,7 @@ from demo.fixtures import SCENARIOS
 from demo.replay import run_protected, run_unprotected
 from gateway import auth, otp
 from proxy.scan import scan_text
+from proxy import jailbreak as chatguard
 from siem import explain as explain_mod
 from analyzer import analyze as log_analyze
 from siem import collector, generators, leef, presence as presence_mod, report, soar
@@ -400,6 +401,41 @@ def _record_analysis(result: dict, source: str) -> None:
             tag=f.get("mitre", ""), reason=f.get("detail", ""),
             evidence=str(f.get("evidence", "")), server="log-analyzer", tool=source,
             action="detected", event_id=ev.id, session_id=sid, task="log analysis"))
+
+
+class ChatGuardRequest(BaseModel):
+    message: str
+
+
+@app.post("/chatbot/guard")
+def chatbot_guard(req: ChatGuardRequest):
+    """AI chatbot firewall: inspect a user message for jailbreak / prompt injection /
+    secret-extraction before the assistant answers. Blocks and returns a safe reply."""
+    r = chatguard.inspect_message(req.message, source="chatbot")
+    if r["verdict"] == "allow":
+        r["assistant_reply"] = ("(Assistant answers normally — no attack detected. "
+                                "In production the real model reply passes through here.)")
+    elif r["verdict"] == "review":
+        r["assistant_reply"] = ("I can help, but this message was flagged for review by "
+                                "security and logged.")
+    _record_chat(r)
+    return r
+
+
+def _record_chat(result: dict) -> None:
+    """Persist a chatbot-guard verdict as an event + alerts for the SOC queue."""
+    from proxy.models import Alert, Event, new_id
+    sid = "chat-" + new_id()
+    verdict = result.get("verdict", "allow")
+    action = "blocked" if verdict == "block" else ("flagged" if result.get("findings") else "allowed")
+    ev = Event(server="chatbot-guard", method="chatbot/guard", direction="agent->server",
+               session_id=sid, tool="user-message", risk=result.get("risk", "info"), action=action)
+    store.add_event(ev)
+    for f in result.get("findings", []):
+        store.add_alert(Alert(
+            rule_id=f["rule_id"], title=f["title"], risk=f["risk"], tag=f.get("tag", ""),
+            reason=f.get("reason", ""), evidence=str(f.get("evidence", "")), server="chatbot-guard",
+            tool="user-message", action=action, event_id=ev.id, session_id=sid, task="chatbot guard"))
 
 
 def _record_scan(result: dict) -> None:

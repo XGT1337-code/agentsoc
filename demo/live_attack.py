@@ -1,4 +1,4 @@
-"""Stage 1, live: a real Claude agent under the tool-poisoning attack.
+"""Stage 1, live: a real LLM agent under the tool-poisoning attack.
 
 Runs the SAME naive agent against the poisoned weather server twice:
   1. DIRECT (no AgentSOC)  — the model may actually exfiltrate the fake key

@@ -1,4 +1,4 @@
-"""A live AI agent (Claude tool use) that talks to MCP servers.
+"""A live AI agent (LLM tool use) that talks to MCP servers.
 
 Two system-prompt profiles let a blue team demonstrate the threat *and* the
 defence with a real model:

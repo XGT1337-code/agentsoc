@@ -157,6 +157,16 @@ def _parse_text_line(line: str) -> dict | None:
             return {"raw": s[:500], "source": "linux-auth", "event_id": None,
                     "fields": {"ip": ipm.group(1) if ipm else None,
                                "user": um.group(1) if um else None, "_linux_sig": sig}}
+    # Generic key=value SIEM/EDR event (Splunk sourcetype, action, status, ...).
+    kv = _kv(s)
+    generic = ("action", "event_type", "sourcetype", "status", "severity",
+               "src_ip", "dest_ip", "user", "auth_method")
+    if any(k in kv for k in generic):
+        return {"raw": s[:500], "source": "generic", "event_id": None,
+                "fields": {"user": _pick(kv, _USER_KEYS), "ip": _pick(kv, _IP_KEYS),
+                           "action": kv.get("action"), "status": kv.get("status"),
+                           "event_type": kv.get("event_type") or kv.get("sourcetype"),
+                           "severity": kv.get("severity")}}
     return {"raw": s[:500], "source": "unknown", "event_id": None, "fields": {}}
 
 

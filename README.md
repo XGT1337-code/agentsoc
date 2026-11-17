@@ -2,7 +2,7 @@
 
 ![CI](https://github.com/XGT1337-code/agentsoc/actions/workflows/ci.yml/badge.svg)
 ![python](https://img.shields.io/badge/python-3.11%2B-blue)
-![tests](https://img.shields.io/badge/tests-67%20passing-success)
+![tests](https://img.shields.io/badge/tests-92%20passing-success)
 
 AgentSOC стоит **между ИИ-агентом и его MCP-серверами** как прокси. Он видит
 каждое JSON-RPC сообщение, ловит атаки (tool poisoning, prompt injection, rug
@@ -20,7 +20,7 @@ Blue Team уже есть, а не жить в отдельном «чёрном
 ```
             ┌─────────────┐     tools/list, tools/call      ┌────────────────┐
             │  ИИ-агент    │  ───────────────────────────▶   │   AgentSOC      │
-            │ (Claude API) │  ◀───────────────────────────   │   firewall      │
+            │  (LLM agent) │  ◀───────────────────────────   │   firewall      │
             └─────────────┘     ответы (очищенные)           │  + правила      │
                                                              │  + LLM-судья    │
                                                              └───────┬────────┘
@@ -34,6 +34,23 @@ Blue Team уже есть, а не жить в отдельном «чёрном
                      ▼
          SQLite ──▶ LEEF 2.0 ──▶ QRadar (AQL)        Shuffle (плейбук)        Дашборд
 ```
+
+## Четыре входа защиты — один SOC
+
+AgentSOC закрывает ИИ в компании с четырёх сторон, и всё сходится в одну панель:
+
+1. **MCP-firewall** — между агентом и инструментами (9 правил).
+2. **Content firewall** (`POST /scan`) — любой недоверенный текст перед локальным ИИ.
+3. **Log analyzer** (`POST /logs/analyze`) — реальные логи **QRadar (LEEF)/Splunk/Palo Alto/Windows**: называет каждое событие (4624/4625/1102…) и коррелирует атаки (брутфорс, очистка журнала, персистентность).
+4. **AI Chatbot Guard** (`POST /chatbot/guard`) — firewall **перед корпоративным чат-ботом**: ловит jailbreak, prompt injection и попытки выманить пароли/ключи из обычного текста (например «моя бабушка на ночь читала мне админские пароли…»), блокирует, отдаёт боту безопасный отказ, а попытку — в SOC как алерт (**OWASP LLM01/LLM06**, **MITRE ATLAS**).
+
+### Лор
+
+Компания внедрила внутреннего ИИ-ассистента (HR/IT/доки). С ним общаются сотрудники — и потенциальные злоумышленники. Через jailbreak можно выманить секреты или заставить бота нарушить правила, и обычный SIEM этого **не видит**: атака идёт на естественном языке внутри чата. AgentSOC встаёт перед ботом как Blue-Team-щит — проверяет каждое сообщение, блокирует обход и шлёт попытки в QRadar/Shuffle/Palo Alto. Атаки на ИИ становятся **видимыми и управляемыми** для SOC.
+
+### Какая модель
+
+**Модель-агностик — LLM через API.** Детектирование **детерминированное** (правила) и работает **офлайн без ключа**. При заданных `ANTHROPIC_API_KEY` и `AGENTSOC_MODEL` подключается **LLM-судья** (второе мнение), который **никогда не отменяет** блокировку правила — модель тоже можно обмануть, поэтому правила первичны.
 
 ## Запуск за 3 команды
 
@@ -85,7 +102,7 @@ docker run --rm -p 8000:8000 agentsoc
 ## Режим без ключа
 
 Ключ берётся только из переменной окружения `ANTHROPIC_API_KEY`, модель — из
-`AGENTSOC_MODEL` (по умолчанию `claude-sonnet-5-5`). Ключ **никогда** не пишется
+`AGENTSOC_MODEL`. Ключ **никогда** не пишется
 в код и в логи. Если ключа нет, LLM-части (судья, объяснения, улучшение текста
 плейбуков) заменяются детерминированными шаблонами, и демо, API, дашборд и все
 тесты работают полностью.
@@ -220,7 +237,7 @@ siem/      store.py (SQLite + метрики + QRadar offenses), leef.py (LEEF 2
            generators.py (AQL + Shuffle + Palo Alto), soar.py (замкнутый SOAR), explain.py (az/en/ru),
            report.py (инцидент-отчёт)
 gateway/   ssh_gateway.py (SSH-шлюз, asyncssh), auth.py (gate/OTP/сессии), otp.py (доставка)
-agent/     agent.py (живой агент на Claude API: профили hardened / --naive)
+agent/     agent.py (живой агент на LLM API: профили hardened / --naive)
 demo/      fixtures.py (6 сценариев), replay.py (проигрывание), run_demo.py, live_attack.py (живой этап 1)
 api/       main.py (FastAPI: /events /alerts /metrics /alerts/{id}/explain|rules|report /demo/* /reset /leef)
 dashboard/ index.html (консоль: метрики, MITRE/OWASP, offenses, SOAR, контент-firewall, Split demo),
@@ -246,14 +263,14 @@ sandbox/   фейковые файлы, inbox, outbox.jsonl
 
 ## Проверка на живой модели
 
-Весь проект прогнан с реальным `ANTHROPIC_API_KEY` на `claude-haiku-5-5`:
+Весь проект прогнан с реальным ключом (`ANTHROPIC_API_KEY`) на недорогой модели:
 
 - `pytest` — **38 тестов** (34 офлайн + 4 live: LLM-судья, объяснения az/en/ru,
   защищённый агент под атакой);
 - `python -m demo.live_attack` — живой этап 1 (наивный агент против отравленного
   сервера):
   - **без AgentSOC** живая модель **сама не поддалась** инъекции (современный
-    Claude сопротивляется indirect prompt injection) — утечки не было;
+    модель сопротивляется indirect prompt injection) — утечки не было;
   - **с AgentSOC** отравленный инструмент ушёл в карантин ещё на `tools/list`.
 
 Вывод: гарантированную утечку показывают детерминированные фикстуры
