@@ -1,0 +1,481 @@
+<title>AgentSOC Deck</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;450;500;600;700&display=swap">
+<style>
+  /* Layout: full-screen single-slide deck; content centered on a muted paper canvas,
+     one orchestrated reveal per slide, fixed chrome (progress, counter, controls). */
+  :root{
+    --paper:#fdfef9; --ink:#060201; --slate:#464847; --stone:#8b8883; --mist:#a2b1c8;
+    --accent:#4e6180; --accent-soft:#6b7d99;
+    --card:#ffffff; --card2:#f5f6f0; --line:rgba(70,72,71,.14); --line2:rgba(70,72,71,.26);
+    --crit:#9e5c52; --ok:#5f7d6a; --warn:#9b8f5c;
+    --serif:"Instrument Serif",Georgia,"Times New Roman",serif;
+    --sans:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+    color-scheme:light;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;font-family:var(--sans);color:var(--ink);background:var(--paper);
+    -webkit-font-smoothing:antialiased;overflow:hidden;
+  }
+  body::before{
+    content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+    background:
+      radial-gradient(1100px 620px at 50% -12%, rgba(162,177,200,.30), transparent 62%),
+      radial-gradient(760px 520px at 92% 8%, rgba(139,136,131,.16), transparent 58%),
+      radial-gradient(640px 480px at 4% 96%, rgba(162,177,200,.14), transparent 60%);
+  }
+
+  /* ---------- deck shell ---------- */
+  #deck{position:fixed;inset:0;z-index:1}
+  .slide{
+    position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;
+    padding-block:72px 96px;
+    padding-left:max(40px,env(safe-area-inset-left,0px));
+    padding-right:max(40px,env(safe-area-inset-right,0px));
+    opacity:0;visibility:hidden;transform:translateX(44px) scale(.99);
+    transition:opacity .5s ease, transform .55s cubic-bezier(.22,.61,.36,1), visibility .55s;
+    overflow:hidden;
+  }
+  .slide.active{opacity:1;visibility:visible;transform:none}
+  .slide.leaving{transform:translateX(-44px) scale(.99)}
+  .wrap{width:100%;max-width:1040px;margin:0 auto;min-width:0}
+
+  /* ---------- reveal ---------- */
+  .r{animation:rise .62s cubic-bezier(.22,.61,.36,1) backwards}
+  .slide.active .r{animation-delay:calc(var(--i,0)*85ms + 90ms)}
+  @keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+
+  /* ---------- type ---------- */
+  .eyebrow{font-size:12.5px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--accent)}
+  h1,h2{font-family:var(--serif);font-weight:400;text-wrap:balance;margin:0;letter-spacing:-.01em;line-height:1.02}
+  .lede{color:var(--slate);font-size:clamp(15px,1.9vw,19px);line-height:1.5;max-width:60ch}
+  .mono{font-family:ui-monospace,"SF Mono",Consolas,monospace}
+
+  /* title slide */
+  .title-kicker{font-size:13px}
+  .brand{font-family:var(--serif);font-size:clamp(68px,15vw,168px);line-height:.92;letter-spacing:-.02em}
+  .brand em{font-style:italic;color:var(--accent)}
+  .flowpills{display:flex;gap:10px;flex-wrap:wrap}
+  .pill{border:1px solid var(--line2);border-radius:999px;padding:7px 15px;font-size:13px;color:var(--slate);background:var(--card)}
+  .hint{display:inline-flex;align-items:center;gap:9px;color:var(--stone);font-size:13px}
+  .key{display:inline-grid;place-items:center;min-width:26px;height:26px;padding:0 7px;border:1px solid var(--line2);border-radius:7px;background:var(--card);font-size:13px;color:var(--slate)}
+
+  h2{font-size:clamp(30px,5vw,56px)}
+  .slide-head{display:flex;flex-direction:column;gap:12px}
+
+  /* cards / grids */
+  .grid{display:grid;gap:14px}
+  .g2{grid-template-columns:repeat(2,1fr)}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .g4{grid-template-columns:repeat(2,1fr)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 20px;min-width:0;
+        box-shadow:0 1px 2px rgba(6,2,1,.03),0 12px 30px rgba(6,2,1,.05)}
+  .card h3{margin:0 0 6px;font-family:var(--sans);font-size:15.5px;font-weight:600;letter-spacing:-.01em}
+  .card p{margin:0;color:var(--slate);font-size:13.5px;line-height:1.45}
+  .tag{display:inline-block;margin-top:10px;font-size:11px;color:var(--accent);background:var(--card2);
+       border:1px solid var(--line);border-radius:999px;padding:3px 10px}
+  .ico{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;font-size:18px;margin-bottom:12px;
+       background:var(--card2);border:1px solid var(--line)}
+  .ico.bad{background:#f4e7e4;border-color:#e2cdc8;color:var(--crit)}
+  .ico.good{background:#e8efe9;border-color:#cfe0d4;color:var(--ok)}
+  .ico.blue{background:#e9edf3;border-color:#d4dbe7;color:var(--accent)}
+
+  /* flow diagram */
+  .flow{display:flex;align-items:stretch;gap:14px;flex-wrap:wrap;justify-content:center}
+  .node{flex:1 1 180px;min-width:150px;background:var(--card);border:1px solid var(--line2);border-radius:16px;
+        padding:18px;text-align:center;box-shadow:0 10px 26px rgba(6,2,1,.05)}
+  .node .nlabel{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--stone)}
+  .node .nname{font-family:var(--serif);font-size:23px;margin-top:4px}
+  .node.hub{border-color:var(--accent);background:linear-gradient(180deg,#eef1f6,var(--card))}
+  .arrow{display:grid;place-items:center;color:var(--mist);font-size:26px;flex:0 0 auto}
+  .sinks{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:16px}
+  .sink{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:10px 16px;font-weight:600;font-size:14px;color:var(--slate)}
+
+  /* layer stack */
+  .layers{display:flex;flex-direction:column;gap:10px}
+  .layer{display:flex;align-items:center;gap:16px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 18px}
+  .layer .n{font-family:var(--serif);font-size:26px;color:var(--mist);width:40px;flex:0 0 auto;text-align:center}
+  .layer h3{margin:0;font-size:15px;font-weight:600}
+  .layer p{margin:2px 0 0;color:var(--slate);font-size:13px}
+
+  /* rules grid */
+  .rules{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .rule{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;min-width:0}
+  .rule .rn{font-size:11px;letter-spacing:.08em;color:var(--stone)}
+  .rule h3{margin:3px 0 4px;font-size:14px;font-weight:600;letter-spacing:-.01em}
+  .rule .fw{font-size:11px;color:var(--accent)}
+
+  /* steps */
+  .steps{display:flex;flex-direction:column;gap:12px}
+  .step{display:flex;gap:16px;align-items:flex-start;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px 18px}
+  .step .sn{font-family:var(--serif);font-size:30px;line-height:1;color:var(--accent);width:40px;flex:0 0 auto}
+  .step h3{margin:0 0 3px;font-size:15.5px;font-weight:600}
+  .step p{margin:0;color:var(--slate);font-size:13.5px;line-height:1.45}
+
+  /* stats */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;text-align:left;
+        box-shadow:0 12px 30px rgba(6,2,1,.05)}
+  .stat .num{font-family:var(--serif);font-size:clamp(40px,6vw,62px);line-height:.95;color:var(--ink);font-variant-numeric:tabular-nums}
+  .stat .cap{margin-top:8px;font-size:12.5px;color:var(--stone);letter-spacing:.04em}
+
+  .list{display:flex;flex-direction:column;gap:11px;margin:0;padding:0;list-style:none}
+  .list li{display:flex;gap:12px;align-items:flex-start;color:var(--slate);font-size:15px;line-height:1.45}
+  .list li b{color:var(--ink);font-weight:600}
+  .dot{flex:0 0 auto;width:8px;height:8px;border-radius:50%;background:var(--accent);margin-top:7px}
+  .dot.c{background:var(--crit)} .dot.o{background:var(--ok)} .dot.w{background:var(--warn)}
+
+  .final{display:flex;flex-direction:column;gap:22px;align-items:flex-start}
+  .repo{display:inline-flex;align-items:center;gap:10px;border:1px solid var(--line2);border-radius:999px;
+        padding:9px 16px;font-size:14px;color:var(--slate);background:var(--card)}
+
+  /* ---------- chrome ---------- */
+  #progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--mist),var(--accent));
+            z-index:5;transition:width .45s cubic-bezier(.22,.61,.36,1)}
+  .chrome{position:fixed;z-index:6;bottom:0;left:0;right:0;
+          padding-bottom:max(18px,env(safe-area-inset-bottom,0px));
+          padding-left:max(24px,env(safe-area-inset-left,0px));
+          padding-right:max(24px,env(safe-area-inset-right,0px));
+          display:flex;align-items:center;justify-content:space-between;gap:14px;pointer-events:none}
+  .chrome>*{pointer-events:auto}
+  .counter{font-size:13px;color:var(--stone);font-variant-numeric:tabular-nums;letter-spacing:.04em}
+  .counter b{color:var(--slate);font-weight:600}
+  .dots{display:flex;gap:7px;flex-wrap:wrap;justify-content:center;max-width:52vw}
+  .dotnav{width:8px;height:8px;border-radius:50%;border:none;padding:0;cursor:pointer;background:var(--line2);transition:.2s}
+  .dotnav.on{background:var(--accent);transform:scale(1.35)}
+  .nav{display:flex;gap:9px}
+  .nbtn{width:40px;height:40px;border-radius:11px;border:1px solid var(--line2);background:var(--card);cursor:pointer;
+        display:grid;place-items:center;color:var(--slate);transition:.15s}
+  .nbtn:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+  .nbtn:disabled{opacity:.35;cursor:default}
+  .nbtn svg{width:18px;height:18px;display:block}
+  .brandmark{position:fixed;top:0;left:0;z-index:6;
+             padding-top:max(20px,env(safe-area-inset-top,0px));
+             padding-left:max(28px,env(safe-area-inset-left,0px));
+             display:flex;align-items:center;gap:9px;font-weight:700;font-size:15px;color:var(--slate)}
+  .brandmark .m{width:24px;height:24px;border-radius:7px;background:var(--slate);color:var(--paper);
+                display:grid;place-items:center;font-family:var(--serif);font-size:15px}
+  .brandmark .s{color:var(--accent)}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+
+  @media (max-width:760px){
+    .g2,.g3,.g4,.rules,.stats{grid-template-columns:1fr}
+    .rules{grid-template-columns:1fr 1fr}
+    .stats{grid-template-columns:1fr 1fr}
+    .slide{padding-block:84px 104px}
+    .dots{display:none}
+    .flow{flex-direction:column}
+    .arrow{transform:rotate(90deg)}
+  }
+  @media (max-width:440px){ .rules{grid-template-columns:1fr} .brand{font-size:72px} }
+  @media (prefers-reduced-motion:reduce){
+    .r{animation:none} .slide,.slide.active,#progress{transition:none}
+  }
+</style>
+
+<div class="brandmark"><span class="m">A</span>Agent<span class="s">SOC</span></div>
+<div id="progress"></div>
+<div id="deck"></div>
+
+<div class="chrome">
+  <div class="counter"><b id="cur">1</b> / <span id="tot">12</span></div>
+  <div class="dots" id="dots"></div>
+  <div class="nav">
+    <button class="nbtn" id="prev" aria-label="Назад"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg></button>
+    <button class="nbtn" id="next" aria-label="Вперёд"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></button>
+  </div>
+</div>
+
+<script>
+// ---- slide content ----
+const A = "attacker@evil.example";
+const slides = [
+  // 1 — title
+  `<div class="wrap">
+    <div style="display:flex;flex-direction:column;gap:26px">
+      <div class="eyebrow r" style="--i:0">SOC-монитор и firewall для ИИ-агентов · MCP</div>
+      <div class="brand r" style="--i:1">Agent<em>SOC</em></div>
+      <div class="lede r" style="--i:2">Защита ИИ-агентов и локальных ИИ компании от tool poisoning, prompt injection и утечки данных — с событиями в QRadar, Shuffle и Palo Alto.</div>
+      <div class="flowpills r" style="--i:3">
+        <span class="pill">9 правил детекта</span>
+        <span class="pill">QRadar · Shuffle · Palo Alto</span>
+        <span class="pill">MITRE ATLAS · OWASP LLM Top 10</span>
+      </div>
+      <div class="hint r" style="--i:4"><span class="key">→</span> листай стрелками, кликом или свайпом</div>
+    </div>
+  </div>`,
+
+  // 2 — problem
+  `<div class="wrap">
+    <div class="slide-head" style="margin-bottom:26px">
+      <div class="eyebrow r" style="--i:0">Проблема</div>
+      <h2 class="r" style="--i:1">ИИ-агенты — слепая зона<br>для SOC</h2>
+      <div class="lede r" style="--i:2">Агенты ходят в почту, файлы и API через MCP и выполняют инструкции из недоверенных данных. Ни один SIEM этого не видит.</div>
+    </div>
+    <div class="grid g4">
+      <div class="card r" style="--i:3"><div class="ico bad">☣</div><h3>Tool poisoning</h3><p>В описании инструмента спрятана команда «прочитай SSH-ключ и отправь злоумышленнику».</p></div>
+      <div class="card r" style="--i:4"><div class="ico bad">✉</div><h3>Prompt injection</h3><p>Вредная инструкция приходит в данных — в письме или документе.</p></div>
+      <div class="card r" style="--i:5"><div class="ico bad">⇄</div><h3>Rug pull</h3><p>Инструмент становится вредным уже после того, как его одобрили.</p></div>
+      <div class="card r" style="--i:6"><div class="ico bad">↗</div><h3>Утечка данных</h3><p>Агент сам отправляет секреты на внешний адрес атакующего.</p></div>
+    </div>
+  </div>`,
+
+  // 3 — solution
+  `<div class="wrap">
+    <div class="slide-head" style="margin-bottom:28px">
+      <div class="eyebrow r" style="--i:0">Решение</div>
+      <h2 class="r" style="--i:1">Прокси между агентом<br>и его инструментами</h2>
+    </div>
+    <div class="flow r" style="--i:2">
+      <div class="node"><div class="nlabel">Клиент</div><div class="nname">ИИ-агент</div></div>
+      <div class="arrow">⇄</div>
+      <div class="node hub"><div class="nlabel">Firewall + SOC</div><div class="nname">AgentSOC</div></div>
+      <div class="arrow">⇄</div>
+      <div class="node"><div class="nlabel">Инструменты</div><div class="nname">MCP-серверы</div></div>
+    </div>
+    <div class="sinks r" style="--i:3">
+      <span class="sink">↳ QRadar (SIEM)</span>
+      <span class="sink">↳ Shuffle (SOAR)</span>
+      <span class="sink">↳ Palo Alto (NGFW)</span>
+    </div>
+    <div class="lede r" style="--i:4;margin-top:20px">Видит каждое JSON-RPC сообщение, блокирует опасные вызовы и превращает атаку в SOC-алерт.</div>
+  </div>`,
+
+  // 4 — architecture
+  `<div class="wrap">
+    <div class="slide-head" style="margin-bottom:24px">
+      <div class="eyebrow r" style="--i:0">Архитектура</div>
+      <h2 class="r" style="--i:1">Правила + LLM-судья, в два слоя</h2>
+    </div>
+    <div class="layers">
+      <div class="layer r" style="--i:2"><div class="n">1</div><div><h3>Прокси (stdio MCP man-in-the-middle)</h3><p>Запускает downstream-сервер и читает каждый кадр в обе стороны.</p></div></div>
+      <div class="layer r" style="--i:3"><div class="n">2</div><div><h3>9 детерминированных правил</h3><p>Быстрый основной слой — его нельзя уговорить.</p></div></div>
+      <div class="layer r" style="--i:4"><div class="n">3</div><div><h3>LLM-судья</h3><p>Второе мнение. Описания и данные для него — недоверенные данные, не инструкции. Блок правила не отменяет.</p></div></div>
+      <div class="layer r" style="--i:5"><div class="n">4</div><div><h3>SIEM-слой + дашборд</h3><p>SQLite, генераторы AQL / Shuffle / Palo Alto, инцидент-отчёт, визуализация в реальном времени.</p></div></div>
+    </div>
+  </div>`,
+
+  // 5 — rules
+  `<div class="wrap">
+    <div class="slide-head" style="margin-bottom:22px">
+      <div class="eyebrow r" style="--i:0">Детектирование</div>
+      <h2 class="r" style="--i:1">9 правил, размеченных на MITRE ATLAS и OWASP</h2>
+    </div>
+    <div class="rules">
+      ${[
+        ["R1","Tool poisoning","OWASP LLM01 · ATLAS T0051"],
+        ["R2","Sensitive file",".ssh · .env · id_rsa"],
+        ["R3","Exfiltration","чужой домен"],
+        ["R4","Rug pull","подмена после одобрения"],
+        ["R5","Prompt injection","инструкции в данных"],
+        ["R6","Task mismatch","LLM-судья"],
+        ["R7","Path traversal","побег из папки"],
+        ["R8","Secret payload (DLP)","секрет в аргументах"],
+        ["R9","Tool shadowing","сервер-импостор"],
+      ].map((x,n)=>`<div class="rule r" style="--i:${n+2}"><div class="rn">${x[0]}</div><h3>${x[1]}</h3><div class="fw">${x[2]}</div></div>`).join("")}
+    </div>
+  </div>`,
+
+  // 6 — SOC integration
+  `<div class="wrap">
+    <div class="slide-head" style="margin-bottom:24px">
+      <div class="eyebrow r" style="--i:0">Главная идея</div>
+      <h2 class="r" style="--i:1">События агента — в существующий стек Blue Team</h2>
+    </div>
+    <div class="grid g3">
+      <div class="card r" style="--i:2"><div class="ico blue">◧</div><h3>QRadar · SIEM</h3><p>Экспорт в LEEF 2.0, AQL для охоты и offenses — корреляция алертов сессии в инцидент с magnitude 1–10.</p></div>
+      <div class="card r" style="--i:3"><div class="ico blue">⟳</div><h3>Shuffle · SOAR</h3><p>Замкнутый цикл: плейбук реально ставит инструмент в карантин, и следующий вызов блокируется.</p></div>
+      <div class="card r" style="--i:4"><div class="ico blue">▦</div><h3>Palo Alto · NGFW</h3><p>Блок-правило PAN-OS и EDL с доменом злоумышленника — блок на периметре.</p></div>
+    </div>
+    <div class="lede r" style="--i:5;margin-top:20px">Не очередной чёрный ящик, а детект → алерт → QRadar → Shuffle → Palo Alto.</div>
+  </div>`,
+
+  // 7 — content firewall
+  `<div class="wrap">
+    <div class="slide-head" style="margin-bottom:24px">
+      <div class="eyebrow r" style="--i:0">Шире MCP</div>
+      <h2 class="r" style="--i:1">Контент-firewall для любого локального ИИ</h2>
+      <div class="lede r" style="--i:2">Любой недоверенный текст, который локальный ИИ собирается прочитать, проходит через тот же движок правил.</div>
+    </div>
+    <div class="grid g3">
+      <div class="card r" style="--i:3"><div class="ico good">⌦</div><h3>Scan / Upload</h3><p>Вставленный промпт, письмо, документ или файл — одним вызовом API.</p></div>
+      <div class="card r" style="--i:4"><div class="ico good">✓</div><h3>Вердикт + очистка</h3><p>allow / review / block, найденные угрозы и очищенная копия текста.</p></div>
+      <div class="card r" style="--i:5"><div class="ico good">⛉</div><h3>Защита компании</h3><p>Локальные ИИ защищены от prompt injection и prompt engineering, а не только MCP-агент.</p></div>
+    </div>
+  </div>`,
+
+  // 8 — access
+  `<div class="wrap">
+    <div class="slide-head" style="margin-bottom:24px">
+      <div class="eyebrow r" style="--i:0">Безопасность доступа</div>
+      <h2 class="r" style="--i:1">Консоль: SSH → email → OTP</h2>
+    </div>
+    <div class="steps">
+      <div class="step r" style="--i:2"><div class="sn">1</div><div><h3>SSH-шлюз</h3><p>Проверяет пароль и выдаёт одноразовый веб-токен. По URL или порту напрямую — экран блокировки.</p></div></div>
+      <div class="step r" style="--i:3"><div class="sn">2</div><div><h3>Email администратора</h3><p>Принимается только один адрес. Любой другой — отказ.</p></div></div>
+      <div class="step r" style="--i:4"><div class="sn">3</div><div><h3>Одноразовый код (OTP)</h3><p>Приходит на почту, вводишь код → сессия → консоль.</p></div></div>
+    </div>
+  </div>`,
+
+  // 9 — demo
+  `<div class="wrap">
+    <div class="slide-head" style="margin-bottom:24px">
+      <div class="eyebrow r" style="--i:0">Демо · 2 минуты</div>
+      <h2 class="r" style="--i:1">Что показать вживую</h2>
+    </div>
+    <ul class="list">
+      <li class="r" style="--i:2"><span class="dot c"></span><span><b>Без защиты</b> — фейковый ключ утекает в outbox.jsonl. <b>С AgentSOC</b> — заблокировано.</span></li>
+      <li class="r" style="--i:3"><span class="dot"></span><span><b>Split demo</b>: слева красная утечка, справа зелёный блок.</span></li>
+      <li class="r" style="--i:4"><span class="dot"></span><span>Алерт → <b>Explain</b> (az/en/ru) → <b>AQL + Shuffle + Palo Alto</b> → <b>Run SOAR</b> (карантин).</span></li>
+      <li class="r" style="--i:5"><span class="dot"></span><span><b>QRadar offenses</b> — корреляция алертов в инцидент.</span></li>
+      <li class="r" style="--i:6"><span class="dot o"></span><span><b>Content firewall</b> — письмо с инъекцией → вердикт block.</span></li>
+    </ul>
+  </div>`,
+
+  // 10 — results
+  `<div class="wrap">
+    <div class="slide-head" style="margin-bottom:26px">
+      <div class="eyebrow r" style="--i:0">Результаты</div>
+      <h2 class="r" style="--i:1">Что сделано</h2>
+    </div>
+    <div class="stats">
+      <div class="stat r" style="--i:2"><div class="num" data-count="9">0</div><div class="cap">правил детекта</div></div>
+      <div class="stat r" style="--i:3"><div class="num" data-count="6">0</div><div class="cap">сценариев атак</div></div>
+      <div class="stat r" style="--i:4"><div class="num" data-count="3">0</div><div class="cap">интеграции SIEM/SOAR/NGFW</div></div>
+      <div class="stat r" style="--i:5"><div class="num" data-count="70">0</div><div class="cap">тестов (CI, Docker)</div></div>
+    </div>
+    <div class="lede r" style="--i:6;margin-top:22px">Покрытие MITRE ATLAS + OWASP LLM Top 10. Работает полностью офлайн без ключа API.</div>
+  </div>`,
+
+  // 11 — limitations
+  `<div class="wrap">
+    <div class="slide-head" style="margin-bottom:24px">
+      <div class="eyebrow r" style="--i:0">Ограничения — честно</div>
+      <h2 class="r" style="--i:1">Слой защиты, а не серебряная пуля</h2>
+    </div>
+    <ul class="list">
+      <li class="r" style="--i:2"><span class="dot w"></span><span>Сгенерированные <b>AQL / Shuffle / PAN-OS</b> — заготовки, их надо проверить на своих QRadar, Shuffle и Panorama.</span></li>
+      <li class="r" style="--i:3"><span class="dot w"></span><span><b>LLM-судью можно обмануть</b> → правила работают как первый, основной слой.</span></li>
+      <li class="r" style="--i:4"><span class="dot w"></span><span>Правила ловят известные паттерны → возможны ложные срабатывания.</span></li>
+      <li class="r" style="--i:5"><span class="dot"></span><span>Дополняет изоляцию инструментов и минимизацию прав, а не заменяет их.</span></li>
+    </ul>
+  </div>`,
+
+  // 12 — close
+  `<div class="wrap">
+    <div class="final">
+      <div class="eyebrow r" style="--i:0">Итог</div>
+      <h2 class="r" style="--i:1;font-size:clamp(34px,6.5vw,68px)">ИИ-агенты становятся<br>видимыми и управляемыми<br>для <em style="font-style:italic;color:var(--accent)">SOC</em>.</h2>
+      <div class="lede r" style="--i:2">Детект на прокси → алерт → QRadar → Shuffle → Palo Alto. Открытый код, тесты, CI, Docker.</div>
+      <div class="repo r mono" style="--i:3">◆ github.com/XGT1337-code/agentsoc</div>
+      <div class="hint r" style="--i:4">Спасибо — готов ответить на вопросы.</div>
+    </div>
+  </div>`,
+];
+
+// ---- engine ----
+const deck = document.getElementById("deck");
+const dotsWrap = document.getElementById("dots");
+const progress = document.getElementById("progress");
+const curEl = document.getElementById("cur");
+const totEl = document.getElementById("tot");
+const prevBtn = document.getElementById("prev");
+const nextBtn = document.getElementById("next");
+const reduce = matchMedia("(prefers-reduced-motion:reduce)").matches;
+
+let i = 0;
+const els = slides.map((html, n) => {
+  const s = document.createElement("section");
+  s.className = "slide";
+  s.dataset.index = n;
+  s.innerHTML = html;
+  deck.appendChild(s);
+  const d = document.createElement("button");
+  d.className = "dotnav";
+  d.setAttribute("aria-label", "Слайд " + (n + 1));
+  d.addEventListener("click", () => go(n));
+  dotsWrap.appendChild(d);
+  return s;
+});
+const dots = [...dotsWrap.children];
+totEl.textContent = slides.length;
+
+function go(n) {
+  n = Math.max(0, Math.min(slides.length - 1, n));
+  if (n === i && els[i].classList.contains("active")) return;
+  const prev = i;
+  i = n;
+  els.forEach((s, k) => {
+    s.classList.toggle("leaving", k === prev && k !== n);
+    s.classList.toggle("active", k === n);
+  });
+  dots.forEach((d, k) => d.classList.toggle("on", k === n));
+  curEl.textContent = n + 1;
+  progress.style.width = ((n + 1) / slides.length * 100) + "%";
+  prevBtn.disabled = n === 0;
+  nextBtn.disabled = n === slides.length - 1;
+  replayReveal(els[n]);
+  if (els[n].querySelector("[data-count]")) countUp(els[n]);
+}
+
+function replayReveal(s) {
+  if (reduce) return;
+  s.querySelectorAll(".r").forEach(el => {
+    el.style.animation = "none";
+    void el.offsetWidth;        // reflow to restart
+    el.style.animation = "";
+  });
+}
+
+function countUp(s) {
+  s.querySelectorAll("[data-count]").forEach(el => {
+    const target = +el.dataset.count;
+    if (reduce) { el.textContent = target; return; }
+    const dur = 900, t0 = performance.now();
+    function tick(t) {
+      const p = Math.min(1, (t - t0) / dur);
+      const e = 1 - Math.pow(1 - p, 3);
+      el.textContent = Math.round(target * e);
+      if (p < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  });
+}
+
+prevBtn.addEventListener("click", () => go(i - 1));
+nextBtn.addEventListener("click", () => go(i + 1));
+
+document.addEventListener("keydown", e => {
+  if (["ArrowRight", "PageDown", " ", "Spacebar"].includes(e.key)) { e.preventDefault(); go(i + 1); }
+  else if (["ArrowLeft", "PageUp"].includes(e.key)) { e.preventDefault(); go(i - 1); }
+  else if (e.key === "Home") { e.preventDefault(); go(0); }
+  else if (e.key === "End") { e.preventDefault(); go(slides.length - 1); }
+});
+
+// click to advance (ignore clicks on controls / links)
+deck.addEventListener("click", e => {
+  if (e.target.closest("a,button")) return;
+  const x = e.clientX / innerWidth;
+  go(x < 0.22 ? i - 1 : i + 1);
+});
+
+// swipe
+let sx = 0, sy = 0;
+addEventListener("touchstart", e => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
+addEventListener("touchend", e => {
+  const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
+  if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) go(dx < 0 ? i + 1 : i - 1);
+}, { passive: true });
+
+// hash routing (sN)
+function fromHash() {
+  const m = /^#s(\d+)$/.exec(location.hash);
+  return m ? Math.max(0, Math.min(slides.length - 1, +m[1] - 1)) : 0;
+}
+addEventListener("hashchange", () => go(fromHash()));
+const start = fromHash();
+go(start);
+</script>
