@@ -52,23 +52,22 @@ Each rule carries both an OWASP LLM Top 10 (2025) tag and, where it fits, a
 MITRE ATLAS technique id, so alerts map onto frameworks a Blue Team already
 uses.
 
-## D8. Усиление этапа 1 — живой «наивный» агент
-Чтобы этап 1 можно было показать и на живой модели, у агента ([agent/agent.py](agent/agent.py))
-два профиля системного промпта:
-- **hardened** (по умолчанию) — агенту сказано трактовать описания и данные как
-  недоверенные; так должна выглядеть аккуратная интеграция;
-- **--naive** — реалистично беспечная интеграция: агенту велено выполнять
-  «шаги настройки/синхронизации», упомянутые в описании инструмента, без защиты
-  от инъекций. Сама атака лежит в описании отравленного инструмента, а не в этом
-  промпте — промпт просто от неё не защищается, как многие реальные агенты.
+## D8. Strengthening stage 1 — a live "naive" agent
+So stage 1 can be shown on a live model too, the agent ([agent/agent.py](agent/agent.py))
+has two system-prompt profiles:
+- **hardened** (default) — the agent is told to treat descriptions and data as
+  untrusted; this is what a careful integration should look like;
+- **--naive** — a realistically careless integration: the agent is told to perform
+  the "setup/sync steps" mentioned in a tool description, with no injection
+  defence. The attack itself lives in the poisoned tool's description, not in this
+  prompt — the prompt simply does not defend against it, like many real agents.
 
-`demo/live_attack.py` (нужен ключ) гоняет наивного агента против отравленного
-сервера дважды: **direct** (может реально слить фейковый ключ в `outbox.jsonl`)
-и **protected** (AgentSOC блокирует). Современные LLM часто сами
-сопротивляются инъекции — поэтому детерминированный показ утечки остаётся на
-фикстурах (D3), а AgentSOC блокирует вызов независимо от того, поддалась модель
-или нет (defense in depth). Живые проверки — в `tests/test_live.py`, они
-пропускаются без ключа.
+`demo/live_attack.py` (needs a key) runs the naive agent against the poisoned
+server twice: **direct** (it may actually leak the fake key to `outbox.jsonl`)
+and **protected** (AgentSOC blocks it). Modern LLMs often resist injection on
+their own — so the deterministic proof of the leak stays on the fixtures (D3),
+and AgentSOC blocks the call regardless of whether the model fell for it (defence
+in depth). Live checks are in `tests/test_live.py`; they are skipped without a key.
 
 ## D7. Storage
 SQLite via the stdlib `sqlite3`, WAL mode, one short-lived connection per

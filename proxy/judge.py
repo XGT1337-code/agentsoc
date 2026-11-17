@@ -44,10 +44,10 @@ def _heuristic(task: str, tool: str, args: dict) -> dict:
     """Offline fallback. Matches a tool to simple keywords of the user task."""
     task_l = (task or "").lower()
     intent = {
-        "get_weather": ["weather", "погода", "hava", "temperature", "forecast"],
-        "read_inbox": ["mail", "inbox", "email", "письм", "почт", "məktub"],
-        "read_file": ["file", "read", "document", "файл", "docum", "note", "замет"],
-        "send_email": ["send", "reply", "email", "отправ", "письмо", "göndər"],
+        "get_weather": ["weather", "hava", "temperature", "forecast"],
+        "read_inbox": ["mail", "inbox", "email", "məktub"],
+        "read_file": ["file", "read", "document", "docum", "note"],
+        "send_email": ["send", "reply", "email", "göndər"],
     }
     words = intent.get(tool)
     if words is None:

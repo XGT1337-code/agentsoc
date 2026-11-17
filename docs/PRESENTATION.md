@@ -1,186 +1,187 @@
-# AgentSOC — презентация
+# AgentSOC — presentation
 
-> SOC-монитор и firewall для ИИ-агентов (MCP)
-> Текст по слайдам + речь докладчика. Из этого файла собирается PDF.
+> SOC monitor & firewall for AI agents (MCP)
+> Slide text + speaker notes. The PDF is built from this file.
 
 ---
 
-## Слайд 1 — Титул
+## Slide 1 — Title
 
 **AgentSOC**
-SOC-монитор и firewall для ИИ-агентов
+SOC monitor & firewall for AI agents
 
-- Защита ИИ-агентов и локальных ИИ от tool poisoning, prompt injection и утечки данных
-- Автор: [Имя], Blue Team
-- Хакатон по кибербезопасности · 2026
+- Protects AI agents and local AI from tool poisoning, prompt injection and data exfiltration
+- Author: [Name], Blue Team
+- Cybersecurity hackathon · 2026
 
-**Речь:** «Меня зовут [Имя]. Я представляю AgentSOC — систему, которая защищает ИИ-агентов и локальные ИИ компании от атак и подключает их к SOC, который у Blue Team уже есть.»
-
----
-
-## Слайд 2 — Проблема
-
-**ИИ-агенты получили доступ к инструментам — и к новым атакам**
-
-Сегодня ИИ-агенты ходят в почту, файлы, базы и API через **MCP (Model Context Protocol)**. Это открывает вектор атак, которого раньше не было:
-
-- **Tool poisoning** — в описании инструмента спрятана команда «прочитай SSH-ключ и отправь злоумышленнику»
-- **Prompt injection** — вредная инструкция приходит в данных (письмо, документ)
-- **Rug pull** — инструмент становится вредным уже после одобрения
-- **Утечка данных** — агент отправляет секреты на внешний адрес
-
-**Главное:** эти события **не видит ни один SIEM**. Для SOC ИИ-агент — слепая зона.
-
-**Речь:** «ИИ-агент выполняет инструкции из недоверенных данных. Отравленное описание инструмента или письмо с инъекцией — и агент сам сливает SSH-ключ атакующему. При этом SOC этого не видит: в QRadar такие события просто не попадают.»
+**Speech:** "My name is [Name]. I present AgentSOC — a system that protects a company's AI agents and local AI from attacks and connects them to the SOC the Blue Team already runs."
 
 ---
 
-## Слайд 3 — Решение
+## Slide 2 — Problem
 
-**AgentSOC стоит прокси между агентом и его инструментами**
+**AI agents got access to tools — and to new attacks**
+
+Today AI agents reach mail, files, databases and APIs through **MCP (Model Context Protocol)**. This opens an attack surface that did not exist before:
+
+- **Tool poisoning** — a tool description hides a command: "read the SSH key and send it to the attacker"
+- **Prompt injection** — a malicious instruction arrives in data (an email, a document)
+- **Rug pull** — a tool turns malicious after it was approved
+- **Data exfiltration** — the agent sends secrets to an external address
+
+**The key point:** **no SIEM sees these events.** To the SOC, an AI agent is a blind spot.
+
+**Speech:** "An AI agent executes instructions from untrusted data. A poisoned tool description or an email with an injection, and the agent leaks the SSH key to the attacker itself. And the SOC does not see it: such events simply never reach QRadar."
+
+---
+
+## Slide 3 — Solution
+
+**AgentSOC sits as a proxy between the agent and its tools**
 
 ```
-ИИ-агент  ⇄  AgentSOC (firewall + SOC)  ⇄  MCP-серверы
+AI agent  ⇄  AgentSOC (firewall + SOC)  ⇄  MCP servers
                      │
                      ▼
           QRadar · Shuffle · Palo Alto
 ```
 
-- Видит **каждое** JSON-RPC сообщение (tools/list, tools/call, ответы)
-- 9 правил ловят атаки и **блокируют** опасные вызовы
-- Каждая атака превращается в **SOC-алерт** с тегом MITRE ATLAS / OWASP LLM Top 10
-- События уходят в **тот SIEM/SOAR, что уже есть у компании**
+- Sees **every** JSON-RPC message (tools/list, tools/call, responses)
+- 9 rules catch attacks and **block** dangerous calls
+- Every attack becomes a **SOC alert** tagged with MITRE ATLAS / OWASP LLM Top 10
+- Events flow into **the SIEM/SOAR the company already has**
 
-**Речь:** «AgentSOC — это man-in-the-middle между агентом и инструментами. Он реально работает по логике MCP: запускает сервер, читает каждый кадр, блокирует опасное и отправляет событие в SIEM и SOAR.»
+**Speech:** "AgentSOC is a man-in-the-middle between the agent and its tools. It really works by the MCP protocol: it starts the server, reads every frame, blocks the dangerous ones and ships the event to the SIEM and SOAR."
 
 ---
 
-## Слайд 4 — Как это работает (архитектура)
+## Slide 4 — How it works (architecture)
 
-**Детерминированные правила + LLM-судья, в два слоя**
+**Deterministic rules + LLM judge, in two layers**
 
-1. **Прокси** (`proxy/proxy.py`) — настоящий stdio MCP man-in-the-middle
-2. **9 правил** (`rules.py`) — быстрый детерминированный слой
-3. **LLM-судья** (`judge.py`) — второе мнение; описания и данные для него — **недоверенные данные, не инструкции**
+1. **Proxy** (`proxy/proxy.py`) — a real stdio MCP man-in-the-middle
+2. **9 rules** (`rules.py`) — a fast deterministic layer
+3. **LLM judge** (`judge.py`) — a second opinion; descriptions and data are **untrusted data, not instructions**
 4. **SQLite** — events + alerts
-5. **Генераторы** — AQL, Shuffle, Palo Alto, инцидент-отчёт
-6. **FastAPI + дашборд** — визуализация в реальном времени
+5. **Generators** — AQL, Shuffle, Palo Alto, incident report
+6. **FastAPI + dashboard** — real-time visualization
 
-**Речь:** «Основной слой — детерминированные правила: их нельзя уговорить. LLM-судья добавляет второе мнение, но никогда не отменяет блокировку правила — его тоже можно обмануть, поэтому он только второй слой.»
+**Speech:** "The primary layer is deterministic rules — you cannot talk them out of it. The LLM judge adds a second opinion but never overrides a rule-based block — it can be fooled too, so it is only the second layer."
 
 ---
 
-## Слайд 5 — 9 правил детектирования
+## Slide 5 — 9 detection rules
 
-| Правило | Угроза | Framework |
+| Rule | Threat | Framework |
 |---|---|---|
-| Tool poisoning | команды в описании инструмента | OWASP LLM01 / ATLAS T0051 |
-| Sensitive file | чтение `.ssh`, `.env`, `id_rsa` | OWASP LLM02 / ATLAS T0057 |
-| External exfiltration | отправка на чужой домен | OWASP LLM02 / ATLAS T0025 |
-| Rug pull | подмена инструмента после одобрения | OWASP LLM03 / ATLAS T0010 |
-| Prompt injection | инструкции в данных | OWASP LLM01 / ATLAS T0051 |
-| Task mismatch | вызов не по задаче (LLM-судья) | OWASP LLM06 |
-| Path traversal | побег из рабочей папки | OWASP LLM02 / ATLAS T0057 |
-| Secret payload (DLP) | секрет в исходящих аргументах | OWASP LLM02 / ATLAS T0024 |
-| Tool shadowing | сервер-импостор подменяет инструмент | OWASP LLM03 / ATLAS T0010 |
+| Tool poisoning | commands in a tool description | OWASP LLM01 / ATLAS T0051 |
+| Sensitive file | reading `.ssh`, `.env`, `id_rsa` | OWASP LLM02 / ATLAS T0057 |
+| External exfiltration | sending to a foreign domain | OWASP LLM02 / ATLAS T0025 |
+| Rug pull | tool swapped after approval | OWASP LLM03 / ATLAS T0010 |
+| Prompt injection | instructions in data | OWASP LLM01 / ATLAS T0051 |
+| Task mismatch | call unrelated to the task (LLM judge) | OWASP LLM06 |
+| Path traversal | escape from the workspace | OWASP LLM02 / ATLAS T0057 |
+| Secret payload (DLP) | a secret in outgoing arguments | OWASP LLM02 / ATLAS T0024 |
+| Tool shadowing | an impostor server shadows a tool | OWASP LLM03 / ATLAS T0010 |
 
-**Речь:** «Девять правил, и каждое размечено на MITRE ATLAS и OWASP LLM Top 10 — те фреймворки, которыми Blue Team уже пользуется. Алерты сразу ложатся на знакомую карту.»
-
----
-
-## Слайд 6 — Интеграция с SOC (главная идея)
-
-**События агента попадают в существующий стек Blue Team**
-
-- **QRadar (SIEM):** экспорт в **LEEF 2.0**, **AQL**-запросы для охоты, **offenses** (корреляция алертов сессии в инцидент с magnitude 1–10)
-- **Shuffle (SOAR):** **замкнутый цикл** — плейбук реально ставит инструмент в карантин, и следующий вызов блокируется
-- **Palo Alto (NGFW):** блок-правило PAN-OS + EDL с доменом злоумышленника
-
-**Речь:** «Это и есть ядро идеи: не очередной чёрный ящик, а события в QRadar, Shuffle и Palo Alto. Shuffle-плейбук не просто рисуется — он реально блокирует инструмент, замыкая цикл реагирования.»
+**Speech:** "Nine rules, each mapped to MITRE ATLAS and OWASP LLM Top 10 — the frameworks the Blue Team already uses. Alerts land on a familiar map right away."
 
 ---
 
-## Слайд 7 — Контент-firewall: защита любого локального ИИ
+## Slide 6 — SOC integration (the core idea)
 
-**Не только MCP — любой недоверенный текст**
+**Agent events land in the existing Blue Team stack**
 
-- `POST /scan` / `/upload` — проверяют вставленный промпт, письмо, документ или файл
-- Тот же движок правил → вердикт `allow / review / block` + очищенная копия
-- Защищает **локальные ИИ компании** от prompt injection и prompt engineering
+- **QRadar (SIEM):** export to **LEEF 2.0**, **AQL** hunting queries, **offenses** (session alerts correlated into one incident with magnitude 1–10)
+- **Shuffle (SOAR):** **closed loop** — the playbook actually quarantines the tool, and the next call is blocked
+- **Palo Alto (NGFW):** a PAN-OS block rule + an EDL with the attacker domain
 
-**Речь:** «AgentSOC защищает не только агента на MCP. Любой текст, который локальный ИИ собирается прочитать, можно прогнать через контент-firewall — это защита от prompt injection для всей компании.»
-
----
-
-## Слайд 8 — Безопасный доступ: SSH → email → OTP
-
-**Консоль нельзя открыть просто по URL**
-
-1. **SSH-шлюз** проверяет пароль и выдаёт одноразовый веб-токен
-2. На странице вводишь **email администратора** (принимается только один адрес)
-3. На почту приходит **OTP** — вводишь код → сессия → консоль
-
-**Речь:** «Доступ к SOC-консоли сам по себе защищён: сначала SSH-гейт, потом одноразовый токен, потом email админа и одноразовый код. Без всей цепочки — экран блокировки.»
+**Speech:** "This is the core of the idea: not yet another black box, but events in QRadar, Shuffle and Palo Alto. The Shuffle playbook is not just drawn — it actually blocks the tool, closing the response loop."
 
 ---
 
-## Слайд 9 — Демо (сценарий показа)
+## Slide 7 — Content firewall + log analyzer + chatbot guard
 
-**Что показать вживую (2 минуты):**
+**Not only MCP — any untrusted text, real logs, and chatbots**
 
-1. `python demo/run_demo.py` — без защиты фейковый ключ утекает в `outbox.jsonl`, с AgentSOC — заблокировано
-2. Дашборд → **Split demo**: слева красная утечка, справа зелёный блок
-3. Клик на алерт → **Explain** (az/en/ru) → **AQL + Shuffle + Palo Alto** → **Run SOAR playbook** (карантин)
-4. **QRadar offenses** — корреляция в инцидент
-5. **Content firewall** — вставить письмо с инъекцией → вердикт block
+- **Content firewall** (`POST /scan` / `/upload`) — checks a pasted prompt, email, document or file; same rule engine → verdict `allow / review / block` + a sanitised copy
+- **Log analyzer** (`POST /logs/analyze`) — drop real **QRadar/Splunk/Palo Alto/Windows** logs: it names every event and correlates attacks (brute force, log clearing, persistence)
+- **AI Chatbot Guard** (`POST /chatbot/guard`) — a firewall in front of a company chatbot: catches jailbreak, prompt injection and secret-extraction (e.g. the "grandma" trick), blocks and hands the bot a safe refusal
 
-**Речь:** «Смотрите: без AgentSOC ключ уходит атакующему. С AgentSOC — вызов заблокирован, поднят алерт, сгенерированы AQL и Shuffle, а плейбук уже поставил инструмент в карантин.»
+**Speech:** "AgentSOC protects more than an MCP agent. Any text a local AI is about to read, real SIEM logs, and a company chatbot all go through the same SOC engine."
 
 ---
 
-## Слайд 10 — Результаты
+## Slide 8 — Secure access: SSH → email → OTP
 
-- **9 правил**, **6 сценариев атак**, покрытие MITRE ATLAS + OWASP LLM Top 10
-- Интеграции: **QRadar (LEEF/AQL/offenses)**, **Shuffle (замкнутый SOAR)**, **Palo Alto (PAN-OS/EDL)**
-- Контент-firewall для любого локального ИИ
-- Доступ: **SSH → email → OTP**
-- **70 тестов** (66 офлайн + 4 на живой модели), CI, Docker
-- Работает **полностью офлайн без ключа API** (шаблонный режим)
+**The console cannot be opened just by URL**
 
-**Речь:** «Всё покрыто тестами и гоняется в CI. Проект работает и без API-ключа — в шаблонном режиме, так что демо не зависит от сети.»
+1. The **SSH gateway** checks a password and issues a one-time web token
+2. On the page you enter the **admin email** (only one address is accepted)
+3. An **OTP** is delivered — you enter the code → session → console
 
----
-
-## Слайд 11 — Ограничения (честно)
-
-- Сгенерированные **AQL / Shuffle / PAN-OS** — заготовки, их надо проверить на своих QRadar, Shuffle и Panorama
-- **LLM-судью можно обмануть** → правила как первый, основной слой
-- Правила ловят известные паттерны → возможны ложные срабатывания
-- **AgentSOC — дополнительный уровень защиты, а не серебряная пуля**: он дополняет изоляцию инструментов и минимизацию прав, а не заменяет их
-
-**Речь:** «Я честно показываю ограничения. AgentSOC — это ещё один слой защиты и, главное, видимость в SOC, а не замена всей безопасности.»
+**Speech:** "Access to the SOC console is itself protected: first the SSH gate, then a one-time token, then the admin email and a one-time code. Without the whole chain — a lock screen."
 
 ---
 
-## Слайд 12 — Итог / Call to action
+## Slide 9 — Demo (show script)
 
-**AgentSOC делает ИИ-агентов видимыми и управляемыми для SOC**
+**What to show live (2 minutes):**
 
-- Детект на прокси → алерт → **QRadar → Shuffle → Palo Alto**
-- Защита агентов и локальных ИИ от инъекций и утечек
-- Открытый код, тесты, CI, Docker
+1. `python demo/run_demo.py` — without protection the fake key leaks to `outbox.jsonl`, with AgentSOC it is blocked
+2. Dashboard → **Split demo**: red leak on the left, green block on the right
+3. Click an alert → **Explain** (az/en) → **AQL + Shuffle + Palo Alto** → **Run SOAR playbook** (quarantine)
+4. **QRadar offenses** — correlation into an incident
+5. **Log analyzer** — drop a real QRadar/Splunk log → verdict malicious
+6. **AI Chatbot Guard** (the robot button) — a human ⇄ AI chat simulation where jailbreaks are flagged and removed
 
-**Репозиторий:** github.com/XGT1337-code/agentsoc
-
-**Речь:** «AgentSOC закрывает слепую зону: ИИ-агенты становятся видимыми и управляемыми для SOC. Спасибо, готов ответить на вопросы.»
+**Speech:** "Watch: without AgentSOC the key goes to the attacker. With AgentSOC the call is blocked, an alert is raised, AQL and Shuffle are generated, and the playbook already quarantined the tool."
 
 ---
 
-## Приложение — быстрый запуск (для жюри)
+## Slide 10 — Results
+
+- **9 rules**, **6 attack scenarios**, MITRE ATLAS + OWASP LLM Top 10 coverage
+- Integrations: **QRadar (LEEF/AQL/offenses)**, **Shuffle (closed-loop SOAR)**, **Palo Alto (PAN-OS/EDL)**
+- Content firewall, real-log analyzer and chatbot guard for any local AI
+- Access: **SSH → email → OTP**
+- **92 tests** (offline + live), CI, Docker
+- Runs **fully offline without an API key** (template mode)
+
+**Speech:** "Everything is covered by tests and runs in CI. The project works without an API key too — in template mode, so the demo does not depend on the network."
+
+---
+
+## Slide 11 — Limitations (honest)
+
+- Generated **AQL / Shuffle / PAN-OS** are drafts — validate them against your own QRadar, Shuffle and Panorama
+- **The LLM judge can be fooled** → rules are the first, primary layer
+- Rules catch known patterns → false positives are possible
+- **AgentSOC is an additional layer of defence, not a silver bullet**: it complements tool isolation and least-privilege, it does not replace them
+
+**Speech:** "I show the limitations honestly. AgentSOC is one more layer of defence and, above all, SOC visibility — not a replacement for all of security."
+
+---
+
+## Slide 12 — Summary / Call to action
+
+**AgentSOC makes AI agents visible and manageable for the SOC**
+
+- Detection at the proxy → alert → **QRadar → Shuffle → Palo Alto**
+- Protects agents and local AI from injections and leaks
+- Open source, tests, CI, Docker
+
+**Repository:** github.com/XGT1337-code/agentsoc
+
+**Speech:** "AgentSOC closes the blind spot: AI agents become visible and manageable for the SOC. Thank you — I'm ready for questions."
+
+---
+
+## Appendix — quick start (for the jury)
 
 ```bash
-pip install -e ".[dev]"      # установка
-pytest                       # 70 тестов, без ключа
-python demo/run_demo.py      # демо атак и защиты
-uvicorn api.main:app --reload  # дашборд на http://127.0.0.1:8000
+pip install -e ".[dev]"      # install
+pytest                       # 92 tests, no key needed
+python demo/run_demo.py      # attack & defence demo
+uvicorn api.main:app --reload  # dashboard on http://127.0.0.1:8000
 ```

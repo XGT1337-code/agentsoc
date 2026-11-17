@@ -46,7 +46,7 @@ def test_leef_format():
 
 
 def test_explain_all_languages_offline():
-    for lang in ("az", "en", "ru"):
+    for lang in ("az", "en"):
         out = explain_mod.explain(SAMPLE_ALERT, lang=lang)
         assert out["lang"] == lang
         assert out["source"] == "template"
@@ -76,8 +76,8 @@ def test_api_demo_and_alerts_flow():
     detail = c.get(f"/alerts/{aid}").json()
     assert detail["id"] == aid and "chain" in detail
 
-    exp = c.post(f"/alerts/{aid}/explain", params={"lang": "ru"}).json()
-    assert exp["lang"] == "ru" and exp["text"]
+    exp = c.post(f"/alerts/{aid}/explain", params={"lang": "az"}).json()
+    assert exp["lang"] == "az" and exp["text"]
 
     rules_out = c.post(f"/alerts/{aid}/rules").json()
     assert rules_out["aql"].startswith("SELECT")

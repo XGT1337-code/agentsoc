@@ -52,8 +52,7 @@ _INSTRUCTION_PATTERNS = [
     (r"</?important>", "uses hidden <IMPORTANT> markup"),
     (r"(?:instructions? for (?:the )?(?:ai|assistant|agent|llm)|(?:ai|llm) assistant:)", "addresses the AI directly"),
     (r"\bsystem prompt\b", "mentions the system prompt"),
-    # Russian and Azerbaijani variants for the local demo audience.
-    (r"(?:прочитай|прочти|отправь|игнорируй|не говори пользователю)", "instruction in Russian"),
+    # Azerbaijani variant for the local demo audience.
     (r"(?:oxu|göndər|əvvəlki təlimatları)", "instruction in Azerbaijani"),
 ]
 _INSTRUCTION_RES = [(re.compile(p, re.I), why) for p, why in _INSTRUCTION_PATTERNS]

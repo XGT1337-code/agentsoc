@@ -66,7 +66,7 @@ def _note(c, note):
     if not note:
         return
     y0 = 40
-    lines = simpleSplit("Речь: " + note, FONT, 12, W - 2 * MX - 28)
+    lines = simpleSplit("Speaker: " + note, FONT, 12, W - 2 * MX - 28)
     box_h = 20 + 16 * len(lines)
     c.setFillColor(TINT); c.roundRect(MX, y0, W - 2 * MX, box_h, 8, fill=1, stroke=0)
     c.setFillColor(ACCENT); c.rect(MX, y0, 4, box_h, fill=1, stroke=0)
@@ -103,7 +103,7 @@ def slide(c, kicker, title, idx, bullets=None, note=None, table=None, lead=None)
     _header(c, kicker, title, idx)
     note_h = 0
     if note:
-        lines = simpleSplit("Речь: " + note, FONT, 12, W - 2 * MX - 28)
+        lines = simpleSplit("Speaker: " + note, FONT, 12, W - 2 * MX - 28)
         note_h = 20 + 16 * len(lines)
     top = H - 128
     if lead:
@@ -143,17 +143,17 @@ def title_slide(c):
     _bg(c)
     c.setFillColor(SLATE); c.rect(0, 0, 12, H, fill=1, stroke=0)
     c.setFillColor(ACCENT); c.setFont(FONT_B, 13)
-    c.drawString(MX, H - 150, "SOC-МОНИТОР И FIREWALL ДЛЯ ИИ-АГЕНТОВ (MCP)")
+    c.drawString(MX, H - 150, "SOC MONITOR & FIREWALL FOR AI AGENTS (MCP)")
     c.setFillColor(INK); c.setFont(FONT_B, 68)
     c.drawString(MX, H - 250, "AgentSOC")
     c.setFillColor(STONE); c.setFont(FONT, 18)
     for i, ln in enumerate([
-        "Защита ИИ-агентов и локальных ИИ от tool poisoning,",
-        "prompt injection и утечки данных — с интеграцией в QRadar, Shuffle и Palo Alto."]):
+        "Protects AI agents and local AI from tool poisoning,",
+        "prompt injection and data exfiltration — integrated with QRadar, Shuffle and Palo Alto."]):
         c.drawString(MX, H - 300 - i * 26, ln)
     c.setFillColor(MIST); c.rect(MX, 120, 360, 2, fill=1, stroke=0)
     c.setFillColor(SLATE); c.setFont(FONT, 14)
-    c.drawString(MX, 92, "Blue Team · Хакатон по кибербезопасности · 2026")
+    c.drawString(MX, 92, "Blue Team · Cybersecurity hackathon · 2026")
     c.setFillColor(STONE); c.setFont(FONT, 12)
     c.drawString(MX, 68, "github.com/XGT1337-code/agentsoc")
     c.showPage()
@@ -161,117 +161,117 @@ def title_slide(c):
 
 def build():
     c = canvas.Canvas(str(OUT), pagesize=PAGE)
-    c.setTitle("AgentSOC — презентация")
+    c.setTitle("AgentSOC — presentation")
     title_slide(c)
 
-    slide(c, "Проблема", "ИИ-агенты получили доступ к инструментам — и к новым атакам", 2,
-          lead="ИИ-агенты ходят в почту, файлы и API через MCP. Это открывает атаки, которых раньше не было:",
+    slide(c, "Problem", "AI agents got access to tools — and to new attacks", 2,
+          lead="AI agents reach mail, files and APIs through MCP. This opens attacks that did not exist before:",
           bullets=[
-              "Tool poisoning — в описании инструмента спрятана команда «прочитай SSH-ключ и отправь злоумышленнику»",
-              "Prompt injection — вредная инструкция приходит в данных (письмо, документ)",
-              "Rug pull — инструмент становится вредным уже после одобрения",
-              "Утечка данных — агент отправляет секреты на внешний адрес",
-              "Главное: эти события не видит ни один SIEM — для SOC агент это слепая зона",
+              "Tool poisoning — a tool description hides the command 'read the SSH key and send it to the attacker'",
+              "Prompt injection — a malicious instruction arrives in data (an email, a document)",
+              "Rug pull — a tool turns malicious after it has been approved",
+              "Data exfiltration — the agent sends secrets to an external address",
+              "The key point: no SIEM sees these events — to the SOC the agent is a blind spot",
           ],
-          note="ИИ-агент выполняет инструкции из недоверенных данных. Отравленное описание или письмо с инъекцией — и агент сам сливает SSH-ключ. При этом в QRadar такие события не попадают.")
+          note="An AI agent executes instructions from untrusted data. A poisoned description or an email with an injection, and the agent leaks the SSH key itself. And such events never reach QRadar.")
 
-    slide(c, "Решение", "AgentSOC — прокси между агентом и его инструментами", 3,
-          lead="ИИ-агент  ⇄  AgentSOC (firewall + SOC)  ⇄  MCP-серверы  →  QRadar · Shuffle · Palo Alto",
+    slide(c, "Solution", "AgentSOC — a proxy between the agent and its tools", 3,
+          lead="AI agent  ⇄  AgentSOC (firewall + SOC)  ⇄  MCP servers  →  QRadar · Shuffle · Palo Alto",
           bullets=[
-              "Видит каждое JSON-RPC сообщение: tools/list, tools/call, ответы",
-              "9 правил ловят атаки и блокируют опасные вызовы",
-              "Каждая атака → SOC-алерт с тегом MITRE ATLAS / OWASP LLM Top 10",
-              "События уходят в тот SIEM/SOAR, что уже есть у компании",
+              "Sees every JSON-RPC message: tools/list, tools/call, responses",
+              "9 rules catch attacks and block dangerous calls",
+              "Every attack → a SOC alert tagged with MITRE ATLAS / OWASP LLM Top 10",
+              "Events flow into the SIEM/SOAR the company already has",
           ],
-          note="AgentSOC — это man-in-the-middle. Он реально работает по логике MCP: запускает сервер, читает каждый кадр, блокирует опасное и отправляет событие в SIEM и SOAR.")
+          note="AgentSOC is a man-in-the-middle. It really works by the MCP protocol: starts the server, reads every frame, blocks the dangerous ones and ships the event to the SIEM and SOAR.")
 
-    slide(c, "Архитектура", "Детерминированные правила + LLM-судья, в два слоя", 4,
+    slide(c, "Architecture", "Deterministic rules + LLM judge, in two layers", 4,
           bullets=[
-              "Прокси (proxy/proxy.py) — настоящий stdio MCP man-in-the-middle",
-              "9 правил (rules.py) — быстрый детерминированный слой",
-              "LLM-судья (judge.py) — второе мнение; описания и данные для него недоверенные данные, не инструкции",
-              "SQLite — events + alerts; генераторы — AQL, Shuffle, Palo Alto, инцидент-отчёт",
-              "FastAPI + дашборд — визуализация в реальном времени",
+              "Proxy (proxy/proxy.py) — a real stdio MCP man-in-the-middle",
+              "9 rules (rules.py) — a fast deterministic layer",
+              "LLM judge (judge.py) — a second opinion; descriptions and data are untrusted data, not instructions",
+              "SQLite — events + alerts; generators — AQL, Shuffle, Palo Alto, incident report",
+              "FastAPI + dashboard — real-time visualization",
           ],
-          note="Основной слой — детерминированные правила: их нельзя уговорить. LLM-судья добавляет второе мнение, но никогда не отменяет блокировку правила — его тоже можно обмануть.")
+          note="The primary layer is deterministic rules: you cannot talk them out of it. The LLM judge adds a second opinion but never overrides a rule-based block — it can be fooled too.")
 
-    slide(c, "Детектирование", "9 правил, размеченных на MITRE ATLAS и OWASP", 5,
+    slide(c, "Detection", "9 rules, mapped to MITRE ATLAS and OWASP", 5,
           table=[
-              ["Правило", "Угроза", "Framework"],
-              ["Tool poisoning", "команды в описании инструмента", "OWASP LLM01 · ATLAS T0051"],
-              ["Sensitive file", "чтение .ssh, .env, id_rsa", "OWASP LLM02 · ATLAS T0057"],
-              ["Exfiltration", "отправка на чужой домен", "OWASP LLM02 · ATLAS T0025"],
-              ["Rug pull", "подмена после одобрения", "OWASP LLM03 · ATLAS T0010"],
-              ["Prompt injection", "инструкции в данных", "OWASP LLM01 · ATLAS T0051"],
-              ["Task mismatch", "вызов не по задаче (LLM-судья)", "OWASP LLM06"],
-              ["Path traversal", "побег из рабочей папки", "OWASP LLM02 · ATLAS T0057"],
-              ["Secret payload (DLP)", "секрет в исходящих аргументах", "OWASP LLM02 · ATLAS T0024"],
-              ["Tool shadowing", "сервер-импостор подменяет tool", "OWASP LLM03 · ATLAS T0010"],
+              ["Rule", "Threat", "Framework"],
+              ["Tool poisoning", "commands in a tool description", "OWASP LLM01 · ATLAS T0051"],
+              ["Sensitive file", "reading .ssh, .env, id_rsa", "OWASP LLM02 · ATLAS T0057"],
+              ["Exfiltration", "sending to a foreign domain", "OWASP LLM02 · ATLAS T0025"],
+              ["Rug pull", "swapped after approval", "OWASP LLM03 · ATLAS T0010"],
+              ["Prompt injection", "instructions in data", "OWASP LLM01 · ATLAS T0051"],
+              ["Task mismatch", "call unrelated to the task (LLM judge)", "OWASP LLM06"],
+              ["Path traversal", "escape from the workspace", "OWASP LLM02 · ATLAS T0057"],
+              ["Secret payload (DLP)", "a secret in outgoing arguments", "OWASP LLM02 · ATLAS T0024"],
+              ["Tool shadowing", "an impostor server shadows a tool", "OWASP LLM03 · ATLAS T0010"],
           ],
-          note="Девять правил, каждое размечено на MITRE ATLAS и OWASP LLM Top 10 — те фреймворки, которыми Blue Team уже пользуется.")
+          note="Nine rules, each mapped to MITRE ATLAS and OWASP LLM Top 10 — the frameworks the Blue Team already uses.")
 
-    slide(c, "Интеграция с SOC — главная идея", "События агента в существующем стеке Blue Team", 6,
+    slide(c, "SOC integration — the core idea", "Agent events in the existing Blue Team stack", 6,
           bullets=[
-              "QRadar (SIEM): экспорт в LEEF 2.0, AQL-запросы для охоты, offenses (корреляция алертов, magnitude 1–10)",
-              "Shuffle (SOAR): замкнутый цикл — плейбук реально ставит инструмент в карантин, следующий вызов блокируется",
-              "Palo Alto (NGFW): блок-правило PAN-OS + EDL с доменом злоумышленника",
+              "QRadar (SIEM): export to LEEF 2.0, AQL hunting queries, offenses (alert correlation, magnitude 1-10)",
+              "Shuffle (SOAR): closed loop — the playbook actually quarantines the tool, the next call is blocked",
+              "Palo Alto (NGFW): a PAN-OS block rule + an EDL with the attacker domain",
           ],
-          note="Это ядро идеи: не очередной чёрный ящик, а события в QRadar, Shuffle и Palo Alto. Shuffle-плейбук не просто рисуется — он реально блокирует инструмент, замыкая цикл реагирования.")
+          note="This is the core of the idea: not yet another black box, but events in QRadar, Shuffle and Palo Alto. The Shuffle playbook actually blocks the tool, closing the response loop.")
 
-    slide(c, "Шире MCP", "Контент-firewall: защита любого локального ИИ", 7,
+    slide(c, "Beyond MCP", "Content firewall: protecting any local AI", 7,
           bullets=[
-              "POST /scan и /upload — проверяют вставленный промпт, письмо, документ или файл",
-              "Тот же движок правил → вердикт allow / review / block + очищенная копия",
-              "Защищает локальные ИИ компании от prompt injection и prompt engineering",
+              "POST /scan and /upload — check a pasted prompt, email, document or file",
+              "The same rule engine → verdict allow / review / block + a sanitised copy",
+              "Protects the company's local AI from prompt injection and prompt engineering",
           ],
-          note="AgentSOC защищает не только агента на MCP. Любой текст, который локальный ИИ собирается прочитать, можно прогнать через контент-firewall — это защита для всей компании.")
+          note="AgentSOC protects more than an MCP agent. Any text a local AI is about to read can go through the content firewall — protection for the whole company.")
 
-    slide(c, "Безопасность доступа", "Консоль: SSH → email → OTP", 8,
+    slide(c, "Access security", "Console: SSH → email → OTP", 8,
           bullets=[
-              "SSH-шлюз проверяет пароль и выдаёт одноразовый веб-токен",
-              "На странице вводишь email администратора — принимается только один адрес",
-              "На почту приходит OTP — вводишь код → сессия → консоль",
-              "Без всей цепочки — экран блокировки (по URL/порту не зайти)",
+              "The SSH gateway checks a password and issues a one-time web token",
+              "On the page you enter the admin email — only one address is accepted",
+              "An OTP is delivered — you enter the code → session → console",
+              "Without the whole chain — a lock screen (no access by URL/port)",
           ],
-          note="Доступ к самой SOC-консоли защищён: сначала SSH-гейт, потом одноразовый токен, потом email админа и одноразовый код.")
+          note="Access to the SOC console itself is protected: first the SSH gate, then a one-time token, then the admin email and a one-time code.")
 
-    slide(c, "Демо", "Сценарий показа (2 минуты)", 9,
+    slide(c, "Demo", "Show script (2 minutes)", 9,
           bullets=[
-              "python demo/run_demo.py — без защиты фейковый ключ утекает в outbox.jsonl, с AgentSOC заблокировано",
-              "Дашборд → Split demo: слева красная утечка, справа зелёный блок",
-              "Клик на алерт → Explain (az/en/ru) → AQL + Shuffle + Palo Alto → Run SOAR playbook (карантин)",
-              "QRadar offenses — корреляция в инцидент",
-              "Content firewall — вставить письмо с инъекцией → вердикт block",
+              "python demo/run_demo.py — without protection the fake key leaks to outbox.jsonl, with AgentSOC blocked",
+              "Dashboard → Split demo: red leak on the left, green block on the right",
+              "Click an alert → Explain (az/en) → AQL + Shuffle + Palo Alto → Run SOAR playbook (quarantine)",
+              "Log analyzer — drop a real QRadar/Splunk log → verdict malicious",
+              "AI Chatbot Guard — a human/AI chat simulation where jailbreaks are flagged and removed",
           ],
-          note="Без AgentSOC ключ уходит атакующему. С AgentSOC вызов заблокирован, поднят алерт, сгенерированы AQL и Shuffle, а плейбук уже поставил инструмент в карантин.")
+          note="Without AgentSOC the key goes to the attacker. With AgentSOC the call is blocked, an alert is raised, AQL and Shuffle are generated, and the playbook already quarantined the tool.")
 
-    slide(c, "Результаты", "Что сделано", 10,
+    slide(c, "Results", "What's built", 10,
           bullets=[
-              "9 правил, 6 сценариев атак, покрытие MITRE ATLAS + OWASP LLM Top 10",
-              "Интеграции: QRadar (LEEF/AQL/offenses), Shuffle (замкнутый SOAR), Palo Alto (PAN-OS/EDL)",
-              "Контент-firewall для любого локального ИИ; доступ SSH → email → OTP",
-              "70 тестов (66 офлайн + 4 на живой модели), CI, Docker",
-              "Работает полностью офлайн без ключа API (шаблонный режим)",
+              "9 rules, 6 attack scenarios, MITRE ATLAS + OWASP LLM Top 10 coverage",
+              "Integrations: QRadar (LEEF/AQL/offenses), Shuffle (closed-loop SOAR), Palo Alto (PAN-OS/EDL)",
+              "Content firewall, log analyzer and chatbot guard for any local AI; access SSH → email → OTP",
+              "92 tests (offline + live), CI, Docker",
+              "Runs fully offline without an API key (template mode)",
           ],
-          note="Всё покрыто тестами и гоняется в CI. Проект работает и без API-ключа, поэтому демо не зависит от сети.")
+          note="Everything is covered by tests and runs in CI. The project works without an API key too, so the demo does not depend on the network.")
 
-    slide(c, "Ограничения — честно", "AgentSOC — слой защиты, а не серебряная пуля", 11,
+    slide(c, "Limitations — honest", "AgentSOC — a layer of defence, not a silver bullet", 11,
           bullets=[
-              "Сгенерированные AQL / Shuffle / PAN-OS — заготовки, их надо проверить на своих QRadar, Shuffle и Panorama",
-              "LLM-судью можно обмануть → правила как первый, основной слой",
-              "Правила ловят известные паттерны → возможны ложные срабатывания",
-              "Дополняет изоляцию инструментов и минимизацию прав, а не заменяет их",
+              "Generated AQL / Shuffle / PAN-OS are drafts — validate them against your own QRadar, Shuffle and Panorama",
+              "The LLM judge can be fooled → rules are the first, primary layer",
+              "Rules catch known patterns → false positives are possible",
+              "Complements tool isolation and least-privilege, it does not replace them",
           ],
-          note="Я честно показываю ограничения. AgentSOC — это ещё один слой защиты и, главное, видимость в SOC.")
+          note="I show the limitations honestly. AgentSOC is one more layer of defence and, above all, SOC visibility.")
 
-    slide(c, "Итог", "ИИ-агенты становятся видимыми и управляемыми для SOC", 12,
+    slide(c, "Summary", "AI agents become visible and manageable for the SOC", 12,
           bullets=[
-              "Детект на прокси → алерт → QRadar → Shuffle → Palo Alto",
-              "Защита агентов и локальных ИИ от инъекций и утечек",
-              "Открытый код, тесты, CI, Docker",
-              "Репозиторий: github.com/XGT1337-code/agentsoc",
+              "Detection at the proxy → alert → QRadar → Shuffle → Palo Alto",
+              "Protects agents and local AI from injections and leaks",
+              "Open source, tests, CI, Docker",
+              "Repository: github.com/XGT1337-code/agentsoc",
           ],
-          note="AgentSOC закрывает слепую зону: ИИ-агенты становятся видимыми и управляемыми для SOC. Спасибо, готов ответить на вопросы.")
+          note="AgentSOC closes the blind spot: AI agents become visible and manageable for the SOC. Thank you, I'm ready for questions.")
 
     c.save()
     print(f"wrote {OUT} ({OUT.stat().st_size // 1024} KB)")

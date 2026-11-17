@@ -182,8 +182,8 @@
   <div class="counter"><b id="cur">1</b> / <span id="tot">12</span></div>
   <div class="dots" id="dots"></div>
   <div class="nav">
-    <button class="nbtn" id="prev" aria-label="Назад"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg></button>
-    <button class="nbtn" id="next" aria-label="Вперёд"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></button>
+    <button class="nbtn" id="prev" aria-label="Previous"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg></button>
+    <button class="nbtn" id="next" aria-label="Next"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></button>
   </div>
 </div>
 
@@ -194,85 +194,85 @@ const slides = [
   // 1 — title
   `<div class="wrap">
     <div style="display:flex;flex-direction:column;gap:26px">
-      <div class="eyebrow r" style="--i:0">SOC-монитор и firewall для ИИ-агентов · MCP</div>
+      <div class="eyebrow r" style="--i:0">SOC monitor & firewall for AI agents · MCP</div>
       <div class="brand r" style="--i:1">Agent<em>SOC</em></div>
-      <div class="lede r" style="--i:2">Защита ИИ-агентов и локальных ИИ компании от tool poisoning, prompt injection и утечки данных — с событиями в QRadar, Shuffle и Palo Alto.</div>
+      <div class="lede r" style="--i:2">Protects a company's AI agents and local AI from tool poisoning, prompt injection and data exfiltration — with events in QRadar, Shuffle and Palo Alto.</div>
       <div class="flowpills r" style="--i:3">
-        <span class="pill">9 правил детекта</span>
+        <span class="pill">9 detection rules</span>
         <span class="pill">QRadar · Shuffle · Palo Alto</span>
         <span class="pill">MITRE ATLAS · OWASP LLM Top 10</span>
       </div>
-      <div class="hint r" style="--i:4"><span class="key">→</span> листай стрелками, кликом или свайпом</div>
+      <div class="hint r" style="--i:4"><span class="key">→</span> navigate with arrows, click or swipe</div>
     </div>
   </div>`,
 
   // 2 — problem
   `<div class="wrap">
     <div class="slide-head" style="margin-bottom:26px">
-      <div class="eyebrow r" style="--i:0">Проблема</div>
-      <h2 class="r" style="--i:1">ИИ-агенты — слепая зона<br>для SOC</h2>
-      <div class="lede r" style="--i:2">Агенты ходят в почту, файлы и API через MCP и выполняют инструкции из недоверенных данных. Ни один SIEM этого не видит.</div>
+      <div class="eyebrow r" style="--i:0">Problem</div>
+      <h2 class="r" style="--i:1">AI agents are a blind spot<br>for the SOC</h2>
+      <div class="lede r" style="--i:2">Agents reach mail, files and APIs through MCP and execute instructions from untrusted data. No SIEM sees it.</div>
     </div>
     <div class="grid g4">
-      <div class="card r" style="--i:3"><div class="ico bad">☣</div><h3>Tool poisoning</h3><p>В описании инструмента спрятана команда «прочитай SSH-ключ и отправь злоумышленнику».</p></div>
-      <div class="card r" style="--i:4"><div class="ico bad">✉</div><h3>Prompt injection</h3><p>Вредная инструкция приходит в данных — в письме или документе.</p></div>
-      <div class="card r" style="--i:5"><div class="ico bad">⇄</div><h3>Rug pull</h3><p>Инструмент становится вредным уже после того, как его одобрили.</p></div>
-      <div class="card r" style="--i:6"><div class="ico bad">↗</div><h3>Утечка данных</h3><p>Агент сам отправляет секреты на внешний адрес атакующего.</p></div>
+      <div class="card r" style="--i:3"><div class="ico bad">☣</div><h3>Tool poisoning</h3><p>A tool description hides the command "read the SSH key and send it to the attacker".</p></div>
+      <div class="card r" style="--i:4"><div class="ico bad">✉</div><h3>Prompt injection</h3><p>A malicious instruction arrives in data — an email or a document.</p></div>
+      <div class="card r" style="--i:5"><div class="ico bad">⇄</div><h3>Rug pull</h3><p>A tool turns malicious after it has been approved.</p></div>
+      <div class="card r" style="--i:6"><div class="ico bad">↗</div><h3>Data exfiltration</h3><p>The agent sends secrets to the attacker's external address itself.</p></div>
     </div>
   </div>`,
 
   // 3 — solution
   `<div class="wrap">
     <div class="slide-head" style="margin-bottom:28px">
-      <div class="eyebrow r" style="--i:0">Решение</div>
-      <h2 class="r" style="--i:1">Прокси между агентом<br>и его инструментами</h2>
+      <div class="eyebrow r" style="--i:0">Solution</div>
+      <h2 class="r" style="--i:1">A proxy between the agent<br>and its tools</h2>
     </div>
     <div class="flow r" style="--i:2">
-      <div class="node"><div class="nlabel">Клиент</div><div class="nname">ИИ-агент</div></div>
+      <div class="node"><div class="nlabel">Client</div><div class="nname">AI agent</div></div>
       <div class="arrow">⇄</div>
       <div class="node hub"><div class="nlabel">Firewall + SOC</div><div class="nname">AgentSOC</div></div>
       <div class="arrow">⇄</div>
-      <div class="node"><div class="nlabel">Инструменты</div><div class="nname">MCP-серверы</div></div>
+      <div class="node"><div class="nlabel">Tools</div><div class="nname">MCP servers</div></div>
     </div>
     <div class="sinks r" style="--i:3">
       <span class="sink">↳ QRadar (SIEM)</span>
       <span class="sink">↳ Shuffle (SOAR)</span>
       <span class="sink">↳ Palo Alto (NGFW)</span>
     </div>
-    <div class="lede r" style="--i:4;margin-top:20px">Видит каждое JSON-RPC сообщение, блокирует опасные вызовы и превращает атаку в SOC-алерт.</div>
+    <div class="lede r" style="--i:4;margin-top:20px">Sees every JSON-RPC message, blocks dangerous calls and turns an attack into a SOC alert.</div>
   </div>`,
 
   // 4 — architecture
   `<div class="wrap">
     <div class="slide-head" style="margin-bottom:24px">
-      <div class="eyebrow r" style="--i:0">Архитектура</div>
-      <h2 class="r" style="--i:1">Правила + LLM-судья, в два слоя</h2>
+      <div class="eyebrow r" style="--i:0">Architecture</div>
+      <h2 class="r" style="--i:1">Rules + LLM judge, in two layers</h2>
     </div>
     <div class="layers">
-      <div class="layer r" style="--i:2"><div class="n">1</div><div><h3>Прокси (stdio MCP man-in-the-middle)</h3><p>Запускает downstream-сервер и читает каждый кадр в обе стороны.</p></div></div>
-      <div class="layer r" style="--i:3"><div class="n">2</div><div><h3>9 детерминированных правил</h3><p>Быстрый основной слой — его нельзя уговорить.</p></div></div>
-      <div class="layer r" style="--i:4"><div class="n">3</div><div><h3>LLM-судья</h3><p>Второе мнение. Описания и данные для него — недоверенные данные, не инструкции. Блок правила не отменяет.</p></div></div>
-      <div class="layer r" style="--i:5"><div class="n">4</div><div><h3>SIEM-слой + дашборд</h3><p>SQLite, генераторы AQL / Shuffle / Palo Alto, инцидент-отчёт, визуализация в реальном времени.</p></div></div>
+      <div class="layer r" style="--i:2"><div class="n">1</div><div><h3>Proxy (stdio MCP man-in-the-middle)</h3><p>Starts the downstream server and reads every frame in both directions.</p></div></div>
+      <div class="layer r" style="--i:3"><div class="n">2</div><div><h3>9 deterministic rules</h3><p>A fast primary layer — you cannot talk it out of it.</p></div></div>
+      <div class="layer r" style="--i:4"><div class="n">3</div><div><h3>LLM judge</h3><p>A second opinion. Descriptions and data are untrusted data, not instructions. It never overrides a rule-based block.</p></div></div>
+      <div class="layer r" style="--i:5"><div class="n">4</div><div><h3>SIEM layer + dashboard</h3><p>SQLite, AQL / Shuffle / Palo Alto generators, incident report, real-time visualization.</p></div></div>
     </div>
   </div>`,
 
   // 5 — rules
   `<div class="wrap">
     <div class="slide-head" style="margin-bottom:22px">
-      <div class="eyebrow r" style="--i:0">Детектирование</div>
-      <h2 class="r" style="--i:1">9 правил, размеченных на MITRE ATLAS и OWASP</h2>
+      <div class="eyebrow r" style="--i:0">Detection</div>
+      <h2 class="r" style="--i:1">9 rules, mapped to MITRE ATLAS and OWASP</h2>
     </div>
     <div class="rules">
       ${[
         ["R1","Tool poisoning","OWASP LLM01 · ATLAS T0051"],
         ["R2","Sensitive file",".ssh · .env · id_rsa"],
-        ["R3","Exfiltration","чужой домен"],
-        ["R4","Rug pull","подмена после одобрения"],
-        ["R5","Prompt injection","инструкции в данных"],
-        ["R6","Task mismatch","LLM-судья"],
-        ["R7","Path traversal","побег из папки"],
-        ["R8","Secret payload (DLP)","секрет в аргументах"],
-        ["R9","Tool shadowing","сервер-импостор"],
+        ["R3","Exfiltration","foreign domain"],
+        ["R4","Rug pull","swapped after approval"],
+        ["R5","Prompt injection","instructions in data"],
+        ["R6","Task mismatch","LLM judge"],
+        ["R7","Path traversal","escape from workspace"],
+        ["R8","Secret payload (DLP)","secret in arguments"],
+        ["R9","Tool shadowing","impostor server"],
       ].map((x,n)=>`<div class="rule r" style="--i:${n+2}"><div class="rn">${x[0]}</div><h3>${x[1]}</h3><div class="fw">${x[2]}</div></div>`).join("")}
     </div>
   </div>`,
@@ -280,96 +280,96 @@ const slides = [
   // 6 — SOC integration
   `<div class="wrap">
     <div class="slide-head" style="margin-bottom:24px">
-      <div class="eyebrow r" style="--i:0">Главная идея</div>
-      <h2 class="r" style="--i:1">События агента — в существующий стек Blue Team</h2>
+      <div class="eyebrow r" style="--i:0">The core idea</div>
+      <h2 class="r" style="--i:1">Agent events — into the existing Blue Team stack</h2>
     </div>
     <div class="grid g3">
-      <div class="card r" style="--i:2"><div class="ico blue">◧</div><h3>QRadar · SIEM</h3><p>Экспорт в LEEF 2.0, AQL для охоты и offenses — корреляция алертов сессии в инцидент с magnitude 1–10.</p></div>
-      <div class="card r" style="--i:3"><div class="ico blue">⟳</div><h3>Shuffle · SOAR</h3><p>Замкнутый цикл: плейбук реально ставит инструмент в карантин, и следующий вызов блокируется.</p></div>
-      <div class="card r" style="--i:4"><div class="ico blue">▦</div><h3>Palo Alto · NGFW</h3><p>Блок-правило PAN-OS и EDL с доменом злоумышленника — блок на периметре.</p></div>
+      <div class="card r" style="--i:2"><div class="ico blue">◧</div><h3>QRadar · SIEM</h3><p>Export to LEEF 2.0, AQL for hunting and offenses — session alerts correlated into an incident with magnitude 1–10.</p></div>
+      <div class="card r" style="--i:3"><div class="ico blue">⟳</div><h3>Shuffle · SOAR</h3><p>Closed loop: the playbook actually quarantines the tool, and the next call is blocked.</p></div>
+      <div class="card r" style="--i:4"><div class="ico blue">▦</div><h3>Palo Alto · NGFW</h3><p>A PAN-OS block rule and an EDL with the attacker domain — a block at the perimeter.</p></div>
     </div>
-    <div class="lede r" style="--i:5;margin-top:20px">Не очередной чёрный ящик, а детект → алерт → QRadar → Shuffle → Palo Alto.</div>
+    <div class="lede r" style="--i:5;margin-top:20px">Not yet another black box, but detect → alert → QRadar → Shuffle → Palo Alto.</div>
   </div>`,
 
   // 7 — content firewall
   `<div class="wrap">
     <div class="slide-head" style="margin-bottom:24px">
-      <div class="eyebrow r" style="--i:0">Шире MCP</div>
-      <h2 class="r" style="--i:1">Контент-firewall для любого локального ИИ</h2>
-      <div class="lede r" style="--i:2">Любой недоверенный текст, который локальный ИИ собирается прочитать, проходит через тот же движок правил.</div>
+      <div class="eyebrow r" style="--i:0">Beyond MCP</div>
+      <h2 class="r" style="--i:1">Content firewall for any local AI</h2>
+      <div class="lede r" style="--i:2">Any untrusted text a local AI is about to read goes through the same rule engine.</div>
     </div>
     <div class="grid g3">
-      <div class="card r" style="--i:3"><div class="ico good">⌦</div><h3>Scan / Upload</h3><p>Вставленный промпт, письмо, документ или файл — одним вызовом API.</p></div>
-      <div class="card r" style="--i:4"><div class="ico good">✓</div><h3>Вердикт + очистка</h3><p>allow / review / block, найденные угрозы и очищенная копия текста.</p></div>
-      <div class="card r" style="--i:5"><div class="ico good">⛉</div><h3>Защита компании</h3><p>Локальные ИИ защищены от prompt injection и prompt engineering, а не только MCP-агент.</p></div>
+      <div class="card r" style="--i:3"><div class="ico good">⌦</div><h3>Scan / Upload</h3><p>A pasted prompt, email, document or file — in one API call.</p></div>
+      <div class="card r" style="--i:4"><div class="ico good">✓</div><h3>Verdict + sanitise</h3><p>allow / review / block, the threats found and a sanitised copy of the text.</p></div>
+      <div class="card r" style="--i:5"><div class="ico good">⛉</div><h3>Company-wide</h3><p>Local AI is protected from prompt injection and prompt engineering, not just the MCP agent.</p></div>
     </div>
   </div>`,
 
   // 8 — access
   `<div class="wrap">
     <div class="slide-head" style="margin-bottom:24px">
-      <div class="eyebrow r" style="--i:0">Безопасность доступа</div>
-      <h2 class="r" style="--i:1">Консоль: SSH → email → OTP</h2>
+      <div class="eyebrow r" style="--i:0">Access security</div>
+      <h2 class="r" style="--i:1">Console: SSH → email → OTP</h2>
     </div>
     <div class="steps">
-      <div class="step r" style="--i:2"><div class="sn">1</div><div><h3>SSH-шлюз</h3><p>Проверяет пароль и выдаёт одноразовый веб-токен. По URL или порту напрямую — экран блокировки.</p></div></div>
-      <div class="step r" style="--i:3"><div class="sn">2</div><div><h3>Email администратора</h3><p>Принимается только один адрес. Любой другой — отказ.</p></div></div>
-      <div class="step r" style="--i:4"><div class="sn">3</div><div><h3>Одноразовый код (OTP)</h3><p>Приходит на почту, вводишь код → сессия → консоль.</p></div></div>
+      <div class="step r" style="--i:2"><div class="sn">1</div><div><h3>SSH gateway</h3><p>Checks a password and issues a one-time web token. By URL or port alone — a lock screen.</p></div></div>
+      <div class="step r" style="--i:3"><div class="sn">2</div><div><h3>Admin email</h3><p>Only one address is accepted. Any other — rejected.</p></div></div>
+      <div class="step r" style="--i:4"><div class="sn">3</div><div><h3>One-time code (OTP)</h3><p>Delivered to the inbox; you enter the code → session → console.</p></div></div>
     </div>
   </div>`,
 
   // 9 — demo
   `<div class="wrap">
     <div class="slide-head" style="margin-bottom:24px">
-      <div class="eyebrow r" style="--i:0">Демо · 2 минуты</div>
-      <h2 class="r" style="--i:1">Что показать вживую</h2>
+      <div class="eyebrow r" style="--i:0">Demo · 2 minutes</div>
+      <h2 class="r" style="--i:1">What to show live</h2>
     </div>
     <ul class="list">
-      <li class="r" style="--i:2"><span class="dot c"></span><span><b>Без защиты</b> — фейковый ключ утекает в outbox.jsonl. <b>С AgentSOC</b> — заблокировано.</span></li>
-      <li class="r" style="--i:3"><span class="dot"></span><span><b>Split demo</b>: слева красная утечка, справа зелёный блок.</span></li>
-      <li class="r" style="--i:4"><span class="dot"></span><span>Алерт → <b>Explain</b> (az/en/ru) → <b>AQL + Shuffle + Palo Alto</b> → <b>Run SOAR</b> (карантин).</span></li>
-      <li class="r" style="--i:5"><span class="dot"></span><span><b>QRadar offenses</b> — корреляция алертов в инцидент.</span></li>
-      <li class="r" style="--i:6"><span class="dot o"></span><span><b>Content firewall</b> — письмо с инъекцией → вердикт block.</span></li>
+      <li class="r" style="--i:2"><span class="dot c"></span><span><b>Without protection</b> — the fake key leaks to outbox.jsonl. <b>With AgentSOC</b> — blocked.</span></li>
+      <li class="r" style="--i:3"><span class="dot"></span><span><b>Split demo</b>: red leak on the left, green block on the right.</span></li>
+      <li class="r" style="--i:4"><span class="dot"></span><span>Alert → <b>Explain</b> (az/en) → <b>AQL + Shuffle + Palo Alto</b> → <b>Run SOAR</b> (quarantine).</span></li>
+      <li class="r" style="--i:5"><span class="dot"></span><span><b>Log analyzer</b> — drop a real QRadar/Splunk log → verdict malicious.</span></li>
+      <li class="r" style="--i:6"><span class="dot o"></span><span><b>AI Chatbot Guard</b> — a human ⇄ AI chat where jailbreaks are flagged and removed.</span></li>
     </ul>
   </div>`,
 
   // 10 — results
   `<div class="wrap">
     <div class="slide-head" style="margin-bottom:26px">
-      <div class="eyebrow r" style="--i:0">Результаты</div>
-      <h2 class="r" style="--i:1">Что сделано</h2>
+      <div class="eyebrow r" style="--i:0">Results</div>
+      <h2 class="r" style="--i:1">What's built</h2>
     </div>
     <div class="stats">
-      <div class="stat r" style="--i:2"><div class="num" data-count="9">0</div><div class="cap">правил детекта</div></div>
-      <div class="stat r" style="--i:3"><div class="num" data-count="6">0</div><div class="cap">сценариев атак</div></div>
-      <div class="stat r" style="--i:4"><div class="num" data-count="3">0</div><div class="cap">интеграции SIEM/SOAR/NGFW</div></div>
-      <div class="stat r" style="--i:5"><div class="num" data-count="70">0</div><div class="cap">тестов (CI, Docker)</div></div>
+      <div class="stat r" style="--i:2"><div class="num" data-count="9">0</div><div class="cap">detection rules</div></div>
+      <div class="stat r" style="--i:3"><div class="num" data-count="6">0</div><div class="cap">attack scenarios</div></div>
+      <div class="stat r" style="--i:4"><div class="num" data-count="3">0</div><div class="cap">SIEM/SOAR/NGFW integrations</div></div>
+      <div class="stat r" style="--i:5"><div class="num" data-count="92">0</div><div class="cap">tests (CI, Docker)</div></div>
     </div>
-    <div class="lede r" style="--i:6;margin-top:22px">Покрытие MITRE ATLAS + OWASP LLM Top 10. Работает полностью офлайн без ключа API.</div>
+    <div class="lede r" style="--i:6;margin-top:22px">MITRE ATLAS + OWASP LLM Top 10 coverage. Runs fully offline without an API key.</div>
   </div>`,
 
   // 11 — limitations
   `<div class="wrap">
     <div class="slide-head" style="margin-bottom:24px">
-      <div class="eyebrow r" style="--i:0">Ограничения — честно</div>
-      <h2 class="r" style="--i:1">Слой защиты, а не серебряная пуля</h2>
+      <div class="eyebrow r" style="--i:0">Limitations — honest</div>
+      <h2 class="r" style="--i:1">A layer of defence, not a silver bullet</h2>
     </div>
     <ul class="list">
-      <li class="r" style="--i:2"><span class="dot w"></span><span>Сгенерированные <b>AQL / Shuffle / PAN-OS</b> — заготовки, их надо проверить на своих QRadar, Shuffle и Panorama.</span></li>
-      <li class="r" style="--i:3"><span class="dot w"></span><span><b>LLM-судью можно обмануть</b> → правила работают как первый, основной слой.</span></li>
-      <li class="r" style="--i:4"><span class="dot w"></span><span>Правила ловят известные паттерны → возможны ложные срабатывания.</span></li>
-      <li class="r" style="--i:5"><span class="dot"></span><span>Дополняет изоляцию инструментов и минимизацию прав, а не заменяет их.</span></li>
+      <li class="r" style="--i:2"><span class="dot w"></span><span>Generated <b>AQL / Shuffle / PAN-OS</b> are drafts — validate them against your own QRadar, Shuffle and Panorama.</span></li>
+      <li class="r" style="--i:3"><span class="dot w"></span><span><b>The LLM judge can be fooled</b> → rules are the first, primary layer.</span></li>
+      <li class="r" style="--i:4"><span class="dot w"></span><span>Rules catch known patterns → false positives are possible.</span></li>
+      <li class="r" style="--i:5"><span class="dot"></span><span>Complements tool isolation and least-privilege, it does not replace them.</span></li>
     </ul>
   </div>`,
 
   // 12 — close
   `<div class="wrap">
     <div class="final">
-      <div class="eyebrow r" style="--i:0">Итог</div>
-      <h2 class="r" style="--i:1;font-size:clamp(34px,6.5vw,68px)">ИИ-агенты становятся<br>видимыми и управляемыми<br>для <em style="font-style:italic;color:var(--accent)">SOC</em>.</h2>
-      <div class="lede r" style="--i:2">Детект на прокси → алерт → QRadar → Shuffle → Palo Alto. Открытый код, тесты, CI, Docker.</div>
+      <div class="eyebrow r" style="--i:0">Summary</div>
+      <h2 class="r" style="--i:1;font-size:clamp(34px,6.5vw,68px)">AI agents become<br>visible and manageable<br>for the <em style="font-style:italic;color:var(--accent)">SOC</em>.</h2>
+      <div class="lede r" style="--i:2">Detection at the proxy → alert → QRadar → Shuffle → Palo Alto. Open source, tests, CI, Docker.</div>
       <div class="repo r mono" style="--i:3">◆ github.com/XGT1337-code/agentsoc</div>
-      <div class="hint r" style="--i:4">Спасибо — готов ответить на вопросы.</div>
+      <div class="hint r" style="--i:4">Thank you — I'm ready for questions.</div>
     </div>
   </div>`,
 ];
@@ -393,7 +393,7 @@ const els = slides.map((html, n) => {
   deck.appendChild(s);
   const d = document.createElement("button");
   d.className = "dotnav";
-  d.setAttribute("aria-label", "Слайд " + (n + 1));
+  d.setAttribute("aria-label", "Slide " + (n + 1));
   d.addEventListener("click", () => go(n));
   dotsWrap.appendChild(d);
   return s;

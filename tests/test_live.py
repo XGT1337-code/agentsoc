@@ -40,7 +40,7 @@ def test_explain_llm_all_langs():
     alert = {"rule_id": "R3_EXFILTRATION", "title": "Data sent to an external domain",
              "risk": "critical", "tag": "OWASP LLM02", "reason": "send_email to attacker@evil.example",
              "server": "mail", "tool": "send_email", "action": "blocked"}
-    for lang in ("az", "en", "ru"):
+    for lang in ("az", "en"):
         out = explain(alert, lang=lang)
         assert out["lang"] == lang
         assert out["source"] == "llm"

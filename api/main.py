@@ -4,7 +4,7 @@ Endpoints:
   GET  /events
   GET  /alerts
   GET  /alerts/{id}
-  POST /alerts/{id}/explain?lang=az|en|ru
+  POST /alerts/{id}/explain?lang=az|en
   POST /alerts/{id}/rules         -> AQL + Shuffle JSON
   POST /demo/{scenario}           -> run a scenario (protected) and return the transcript
   POST /demo/{scenario}/split     -> run unprotected AND protected (for Split demo)
