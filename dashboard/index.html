@@ -141,6 +141,11 @@
     <div class="card"><h3>MITRE ATLAS coverage</h3><div id="atlasBars"><div class="muted">—</div></div></div>
   </div>
 
+  <div class="card" style="margin-top:14px">
+    <h3>QRadar offenses — alerts correlated per session</h3>
+    <div id="offenses"><div class="muted">Run a scenario to correlate alerts into offenses.</div></div>
+  </div>
+
   <div class="scen">
     <button class="btn grad" onclick="runScenario('tool_poisoning')">Tool poisoning</button>
     <button class="btn grad" onclick="runScenario('prompt_injection')">Prompt injection</button>
@@ -188,7 +193,8 @@ async function jget(u){ const r = await fetch(API+u); return r.json(); }
 async function jpost(u){ const r = await fetch(API+u,{method:"POST"}); return r.json(); }
 
 async function refresh(){
-  const [m, al, h] = await Promise.all([jget("/metrics"), jget("/alerts?limit=300"), jget("/health")]);
+  const [m, al, h, offs] = await Promise.all([jget("/metrics"), jget("/alerts?limit=300"), jget("/health"), jget("/offenses")]);
+  renderOffenses(offs);
   document.getElementById("mEvents").textContent = m.totals.events;
   document.getElementById("mSessions").textContent = (m.totals.sessions||0)+" sessions";
   document.getElementById("mAlerts").textContent = m.totals.alerts;
@@ -202,6 +208,19 @@ async function refresh(){
   renderBars("ruleBars", Object.entries(m.by_rule||{}).map(([k,v])=>[k+" · "+v.title, v.count]));
   renderBars("atlasBars", Object.entries(m.mitre_atlas||{}));
   alerts = al; renderAlerts();
+}
+function renderOffenses(offs){
+  const box = document.getElementById("offenses");
+  if(!offs || !offs.length){ box.innerHTML='<div class="muted">No offenses yet.</div>'; return; }
+  box.innerHTML = `<div class="bar" style="grid-template-columns:52px 1fr 90px 90px;color:var(--muted);margin-bottom:6px">
+      <div>MAG</div><div>OFFENSE</div><div>ALERTS</div><div>RULES</div></div>` +
+    offs.slice(0,8).map(o=>`
+    <div class="bar" style="grid-template-columns:52px 1fr 90px 90px;align-items:center;margin-bottom:6px">
+      <div><span class="risk ${o.risk}" style="min-width:26px;display:inline-block;text-align:center">${o.magnitude}</span></div>
+      <div class="name" title="${esc(o.description)}">${esc(o.name)} <span class="muted">· ${esc(o.servers.join(', '))}</span></div>
+      <div class="num">${o.alert_count} <span class="muted" style="font-weight:400">(${o.blocked} blk)</span></div>
+      <div class="num" style="font-size:11px">${o.rules.length}</div>
+    </div>`).join("");
 }
 function renderBars(id, pairs){
   const box = document.getElementById(id);
@@ -248,7 +267,8 @@ async function openAlert(id){
       </div><div id="explainOut" class="muted">Choose a language and click Explain.</div></div>
     <div class="dcard"><h3>Response</h3>
       <div class="row">
-        <button class="btn grad sm" onclick="genRules('${id}')">AQL + Shuffle</button>
+        <button class="btn grad sm" onclick="genRules('${id}')">AQL + Shuffle + Palo Alto</button>
+        <button class="btn sm" onclick="runSoar('${id}')">▶ Run SOAR playbook</button>
         <button class="btn sm" onclick="genReport('${id}')">Incident report</button>
       </div><div id="rulesOut"></div></div>
     <div class="dcard"><h3>Event chain</h3><ul class="chain">${chain||'<li class="muted">no events</li>'}</ul></div>`;
@@ -267,7 +287,20 @@ async function genRules(id){
       <span class="muted">mode: ${r.mode}</span></div><pre>${esc(r.aql)}</pre>
     <div class="row" style="margin-top:12px"><strong>Shuffle playbook</strong>
       <button class="btn sm" onclick='copyText(${JSON.stringify(JSON.stringify(JSON.stringify(r.shuffle,null,2)))})'>Copy</button></div>
-    <pre>${esc(JSON.stringify(r.shuffle,null,2))}</pre>`;
+    <pre>${esc(JSON.stringify(r.shuffle,null,2))}</pre>
+    <div class="row" style="margin-top:12px"><strong>Palo Alto PAN-OS (block attacker domain)</strong>
+      <button class="btn sm" onclick='copyText(${JSON.stringify(JSON.stringify(r.panos.set_commands.join("\n")))})'>Copy set</button>
+      <span class="muted">EDL: ${esc((r.panos.edl_domains||[]).join(", "))}</span></div>
+    <pre>${esc(r.panos.set_commands.join("\n"))}</pre>`;
+}
+async function runSoar(id){
+  const out=document.getElementById("rulesOut"); out.textContent="running playbook…";
+  const r=await jpost("/alerts/"+id+"/soar/execute");
+  const rows=r.steps.map(s=>`<div class="step ${s.status==='ok'?'blocked':(s.status==='skipped'?'redacted':'')}">${s.id.padEnd(14)} [${s.status}] ${esc(s.detail)}</div>`).join("");
+  out.innerHTML=`<div class="row" style="margin-top:12px"><strong>SOAR run — ${esc(r.playbook)}</strong>
+      <span class="badge-ok" style="${r.contained?'':'display:none'}">contained</span></div>${rows}
+      <div class="muted" style="margin-top:6px">${r.contained?('Tool '+esc(r.containment.tool)+' on '+esc(r.containment.server)+' is now quarantined — the next call is blocked (rule R0).'):'No auto-containment (risk below high).'}</div>`;
+  refresh();
 }
 async function genReport(id){
   const out=document.getElementById("rulesOut"); out.textContent="…";

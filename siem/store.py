@@ -144,6 +144,58 @@ class Store:
             "totals": self.stats(),
         }
 
+    def offenses(self) -> list[dict]:
+        """QRadar-style offenses: alerts correlated per session into one incident.
+
+        Magnitude (1-10) follows QRadar's idea: driven by the highest-severity
+        alert in the session and bumped by the number of distinct rules that fired.
+        """
+        sev = {"info": 1, "low": 3, "medium": 5, "high": 8, "critical": 10}
+        with self._conn() as c:
+            rows = [dict(r) for r in c.execute(
+                "SELECT session_id, risk, rule_id, title, tag, server, tool, action, ts "
+                "FROM alerts ORDER BY ts ASC")]
+        groups: dict[str, dict] = {}
+        for a in rows:
+            sid = a["session_id"] or "unknown"
+            g = groups.setdefault(sid, {
+                "session_id": sid, "alerts": 0, "rules": set(), "servers": set(),
+                "max_sev": 0, "risk": "info", "first_ts": a["ts"], "last_ts": a["ts"],
+                "blocked": 0, "titles": [], "tags": set(),
+            })
+            g["alerts"] += 1
+            g["rules"].add(a["rule_id"])
+            g["servers"].add(a["server"])
+            g["tags"].add(a["tag"])
+            if a["title"] not in g["titles"]:
+                g["titles"].append(a["title"])
+            if a["action"] in ("blocked", "quarantined", "redacted"):
+                g["blocked"] += 1
+            s = sev.get(a["risk"], 1)
+            if s > g["max_sev"]:
+                g["max_sev"] = s
+                g["risk"] = a["risk"]
+            g["last_ts"] = a["ts"]
+        out = []
+        for g in groups.values():
+            magnitude = min(10, g["max_sev"] + max(0, len(g["rules"]) - 1))
+            out.append({
+                "session_id": g["session_id"],
+                "magnitude": magnitude,
+                "risk": g["risk"],
+                "alert_count": g["alerts"],
+                "blocked": g["blocked"],
+                "rules": sorted(g["rules"]),
+                "servers": sorted(g["servers"]),
+                "tags": sorted(g["tags"]),
+                "name": g["titles"][0] if g["titles"] else "AgentSOC offense",
+                "description": "; ".join(g["titles"][:4]),
+                "first_ts": g["first_ts"], "last_ts": g["last_ts"],
+                "status": "open",
+            })
+        out.sort(key=lambda o: (o["magnitude"], o["alert_count"]), reverse=True)
+        return out
+
     # ------------------------------------------------------------ approvals (rug pull)
     def get_approval(self, server: str, tool: str) -> dict | None:
         with self._conn() as c:

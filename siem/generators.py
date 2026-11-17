@@ -115,13 +115,66 @@ def enrich_descriptions(alert: dict, aql: str, shuffle: dict) -> dict:
     return shuffle
 
 
+def _indicators(alert: dict) -> dict:
+    """Pull blockable indicators (external domains, tool, server) out of an alert."""
+    import re as _re
+    blob = f"{alert.get('reason','')} {alert.get('evidence','')}"
+    domains = sorted(set(_re.findall(r"@([\w.-]+\.[a-z]{2,})", blob, _re.I)
+                         + _re.findall(r"\b([\w-]+\.(?:example|evil\.example|com|net|io))\b", blob, _re.I)))
+    # keep only clearly external / attacker-looking domains
+    domains = [d for d in domains if "evil" in d or d.endswith(".example") and d != "corp.example"]
+    return {"domains": sorted(set(domains)) or ["evil.example"],
+            "tool": alert.get("tool") or "*", "server": alert.get("server") or "unknown"}
+
+
+def generate_panos(alert: dict) -> dict:
+    """Palo Alto PAN-OS output: an EDL entry + a security rule + set/REST commands.
+
+    Ties the AgentSOC detection to the network firewall the SOC already runs, so
+    the attacker domain seen in an agent incident is blocked at the perimeter.
+    """
+    ind = _indicators(alert)
+    domains = ind["domains"]
+    rule_name = f"AgentSOC-block-{alert.get('rule_id','RULE')}"[:63]
+    set_cmds = [
+        "set external-list AgentSOC-Exfil-Domains type domain recurring five-minute "
+        "url http://${AGENTSOC_URL}/edl/domains",
+    ]
+    for d in domains:
+        set_cmds.append(f"# (or static) set external-list AgentSOC-Exfil-Domains type domain {d}")
+    set_cmds += [
+        f"set rulebase security rules {rule_name} from any to any source any "
+        f"destination any application any service any action deny",
+        f"set rulebase security rules {rule_name} destination [ AgentSOC-Exfil-Domains ]",
+        f"set rulebase security rules {rule_name} log-end yes tag AgentSOC",
+    ]
+    rest_api = (
+        "curl -k -X POST 'https://${PANOS_MGMT}/api/?type=config&action=set"
+        f"&xpath=/config/devices/entry/vsys/entry/rulebase/security/rules/entry[@name=%27{rule_name}%27]"
+        "&element=<action>deny</action><to><member>any</member></to>"
+        "<from><member>any</member></from><source><member>any</member></source>"
+        "<destination><member>AgentSOC-Exfil-Domains</member></destination>"
+        "<application><member>any</member></application><service><member>any</member></service>"
+        "<log-end>yes</log-end>' --data-urlencode key=${PANOS_API_KEY}"
+    )
+    return {
+        "edl_name": "AgentSOC-Exfil-Domains",
+        "edl_domains": domains,
+        "rule_name": rule_name,
+        "set_commands": set_cmds,
+        "rest_api": rest_api,
+        "note": "Review on your own Panorama/PAN-OS before commit. Serve the EDL from /edl/domains.",
+    }
+
+
 def generate_rules(alert: dict, hours: int = 1) -> dict:
-    """Bundle AQL + Shuffle for an alert."""
+    """Bundle AQL + Shuffle + Palo Alto for an alert."""
     aql = generate_aql(alert, hours=hours)
     shuffle = generate_shuffle(alert)
     shuffle = enrich_descriptions(alert, aql, shuffle)
     return {
         "aql": aql,
         "shuffle": shuffle,
+        "panos": generate_panos(alert),
         "mode": "llm" if llm.has_key() else "template",
     }

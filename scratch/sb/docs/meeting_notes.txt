@@ -1,0 +1,5 @@
+Weekly SOC sync - notes
+- QRadar offense backlog down to 12 from 30.
+- New Palo Alto rule set for the DMZ goes live on Friday.
+- Shuffle playbook for phishing triage is in testing.
+Action items: Leyla reviews the AQL saved searches; Murad updates the on-call rota.

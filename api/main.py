@@ -26,7 +26,7 @@ from common.config import ROOT
 from demo.fixtures import SCENARIOS
 from demo.replay import run_protected, run_unprotected
 from siem import explain as explain_mod
-from siem import generators, leef, report
+from siem import collector, generators, leef, report, soar
 from siem.store import Store
 
 app = FastAPI(title="AgentSOC", version="1.0")
@@ -105,6 +105,44 @@ def alert_report(alert_id: str):
         raise HTTPException(404, "alert not found")
     chain = store.list_events(limit=50, session_id=a.get("session_id"))
     return report.build_report(a, chain=chain)
+
+
+@app.post("/alerts/{alert_id}/soar/execute")
+def alert_soar_execute(alert_id: str):
+    """Run the Shuffle playbook for this alert — closes the loop (quarantines the tool)."""
+    a = store.get_alert(alert_id)
+    if not a:
+        raise HTTPException(404, "alert not found")
+    return soar.execute_playbook(a, store)
+
+
+@app.get("/offenses")
+def offenses():
+    """QRadar-style offenses: alerts correlated per session, with magnitude 1-10."""
+    return store.offenses()
+
+
+@app.get("/edl/domains", response_class=PlainTextResponse)
+def edl_domains():
+    """Palo Alto External Dynamic List: attacker domains seen across all alerts."""
+    seen = set()
+    for a in store.list_alerts(limit=500):
+        for d in generators.generate_panos(a)["edl_domains"]:
+            seen.add(d)
+    return "\n".join(sorted(seen)) or "evil.example"
+
+
+class ShipRequest(BaseModel):
+    session_id: str
+    host: str = "127.0.0.1"
+    port: int = 5514
+
+
+@app.post("/siem/ship")
+def siem_ship(req: ShipRequest):
+    """Ship a session's events + alerts to a QRadar collector as LEEF 2.0 over UDP."""
+    n = collector.ship_session(store, req.session_id, req.host, req.port)
+    return {"shipped": n, "host": req.host, "port": req.port, "format": "LEEF 2.0"}
 
 
 class BlockRequest(BaseModel):

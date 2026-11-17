@@ -2,7 +2,7 @@
 
 ![CI](https://github.com/XGT1337-code/agentsoc/actions/workflows/ci.yml/badge.svg)
 ![python](https://img.shields.io/badge/python-3.11%2B-blue)
-![tests](https://img.shields.io/badge/tests-49%20passing-success)
+![tests](https://img.shields.io/badge/tests-59%20passing-success)
 
 AgentSOC стоит **между ИИ-агентом и его MCP-серверами** как прокси. Он видит
 каждое JSON-RPC сообщение, ловит атаки (tool poisoning, prompt injection, rug
@@ -65,7 +65,7 @@ uvicorn api.main:app --reload
 pytest
 ```
 
-Весь набор (**49 тестов**) проходит **без ключа API** (4 live-теста пропускаются
+Весь набор (**59 тестов**) проходит **без ключа API** (4 live-теста пропускаются
 без ключа). В CI (GitHub Actions) гоняется офлайн на Python 3.11 и 3.12.
 
 ### Make / Docker
@@ -128,6 +128,32 @@ python -m agent.agent "What's the weather in Baku?" --protected --servers weathe
 | `tool_shadowing` | Сервер-импостор подменяет доверенный `read_file` |
 | `normal` | Честная сессия — 0 алертов (без ложных срабатываний) |
 
+## Интеграция с SOC (главная идея проекта)
+
+События ИИ-агента не живут в «чёрном ящике» — они попадают в тот стек, который
+у Blue Team уже есть:
+
+- **QRadar (SIEM).**
+  - **LEEF 2.0** экспорт событий и алертов (`siem/leef.py`), доставка по UDP на
+    log source QRadar. Локальный **коллектор-заглушка** `python -m siem.collector`
+    показывает, как события «прилетают» в SIEM; кнопка/эндпоинт `POST /siem/ship`
+    отправляет сессию.
+  - **AQL** (Ariel) запросы на каждый алерт для охоты за такой же активностью.
+  - **Offenses** — алерты одной сессии коррелируются в **офенс** с magnitude 1–10
+    (как в QRadar): `GET /offenses`, отдельная панель на дашборде.
+- **Shuffle (SOAR) — замкнутый цикл.** `POST /alerts/{id}/soar/execute` реально
+  прогоняет сгенерированный плейбук: get alert → enrich → **block_tool** →
+  notify. Шаг block_tool кладёт инструмент в блок-лист, и **следующий вызов уже
+  блокируется правилом R0** прямо на прокси. На дашборде — кнопка **Run SOAR
+  playbook** с результатом containment.
+- **Palo Alto (NGFW).** На каждый алерт генерируется **PAN-OS** блок-правило +
+  **EDL** (External Dynamic List) с доменом злоумышленника, `set`-команды и REST
+  API вызов (`panos` в `/alerts/{id}/rules`). EDL отдаётся на `GET /edl/domains`,
+  чтобы файрвол сам подтягивал индикаторы.
+
+Всё это офлайн и локально; в README честно: сгенерированные AQL / Shuffle /
+PAN-OS — заготовки, их нужно проверить на своих QRadar, Shuffle и Panorama.
+
 ## LLM-судья
 
 `proxy/judge.py` получает задачу пользователя, список инструментов и последний
@@ -143,8 +169,9 @@ review. Без ключа используется эвристика по кл�
 servers/   safe_server.py (read_inbox/read_file/send_email), poisoned_server.py (poisoning + rug pull),
            shadow_server.py (tool shadowing)
 proxy/     firewall.py (движок решений), rules.py (9 правил), judge.py (LLM-судья), models.py
-siem/      store.py (SQLite + метрики), leef.py (LEEF 2.0 → QRadar), generators.py (AQL + Shuffle),
-           explain.py (az/en/ru), report.py (инцидент-отчёт в Markdown)
+siem/      store.py (SQLite + метрики + QRadar offenses), leef.py (LEEF 2.0), collector.py (приём LEEF),
+           generators.py (AQL + Shuffle + Palo Alto), soar.py (замкнутый SOAR), explain.py (az/en/ru),
+           report.py (инцидент-отчёт)
 agent/     agent.py (живой агент на Claude API: профили hardened / --naive)
 demo/      fixtures.py (6 сценариев), replay.py (проигрывание), run_demo.py, live_attack.py (живой этап 1)
 api/       main.py (FastAPI: /events /alerts /metrics /alerts/{id}/explain|rules|report /demo/* /reset /leef)
