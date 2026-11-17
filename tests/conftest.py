@@ -14,10 +14,16 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 
 
+def pytest_configure(config):
+    config.addinivalue_line("markers", "live: needs a real ANTHROPIC_API_KEY (keeps the key set)")
+
+
 @pytest.fixture(autouse=True)
-def isolated_env(tmp_path, monkeypatch):
-    # No API key -> template / heuristic mode everywhere.
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+def isolated_env(request, tmp_path, monkeypatch):
+    # Offline tests force template / heuristic mode by removing the key.
+    # Tests marked @pytest.mark.live keep the real key so they hit the model.
+    if request.node.get_closest_marker("live") is None:
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     sb = tmp_path / "sandbox"
     shutil.copytree(ROOT / "sandbox", sb)
     (sb / "outbox.jsonl").unlink(missing_ok=True)
